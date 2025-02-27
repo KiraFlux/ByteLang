@@ -18,9 +18,21 @@ class Registry[Key, Item](ABC):
     def get(self, key: Key) -> Optional[Item]:
         """Получить предмет по ключу"""
 
+    def has(self, key: Key) -> bool:
+        """Реестр содержит запись"""
+        return key in self._items
+
     def getItems(self) -> Iterable[tuple[Key, Item]]:
         """Получить значения реестра"""
         return self._items.items()
+
+
+class RuntimeRegistry[Key, Item](Registry, ABC):
+    """Интерфейс позволяет добавлять элементы налету"""
+
+    def register(self, key: Key, item: Item) -> None:
+        """Зарегистрировать элемент"""
+        self._items[key] = item
 
 
 class ImmediateRegistry[Key, Item](Registry[Key, Item]):
