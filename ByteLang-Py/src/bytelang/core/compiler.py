@@ -8,6 +8,7 @@ from typing import Iterable
 from typing import TextIO
 
 from bytelang.abc.lexer import Lexer
+from bytelang.abc.parser import Parser
 from rustpy.result import Result
 
 
@@ -26,6 +27,7 @@ class Compiler:
     """Компилятор"""
 
     lexer: Lexer
+    parser: Parser
 
     def run(self, source: TextIO, bytecode: BinaryIO) -> Result[CompileInfo, Iterable[str]]:
         """Преобразовать исходный код в байткод"""
@@ -40,7 +42,14 @@ class Compiler:
 
         tokens = lexer_result.unwrap()
 
-        # Лексический анализ
+        # Генерация AST
+
+        parser_result = self.parser.run(tokens)
+
+        if parser_result.isError():
+            return Result.error(parser_result.getError())
+
+        program = parser_result.unwrap()
 
         # Завершение работы
 

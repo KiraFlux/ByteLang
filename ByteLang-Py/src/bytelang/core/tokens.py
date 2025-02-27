@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
+from enum import StrEnum
 from enum import auto
 from typing import Callable
 from typing import Optional
@@ -48,6 +49,19 @@ class _Spec[T: _Value]:
         return self.transformer(lexeme)
 
 
+class Operator(StrEnum):
+    """Операторы"""
+
+    Plus = "+"
+    Minus = "-"
+    Star = "*"
+    Slash = "/"
+
+    def regex(self) -> str:
+        """Преобразовать значение в регулярное выражение"""
+        return f"/{self.value}"
+
+
 class TokenType(Enum):
     """Тип токена"""
 
@@ -71,14 +85,14 @@ class TokenType(Enum):
 
     # Операторы
 
-    Plus = _Spec[None](r'\+', hierarchy=_Hierarchy.Term)
+    Plus = _Spec[None](Operator.Plus.regex(), hierarchy=_Hierarchy.Term)
     """Оператор +"""
-    Minus = _Spec[None](r'-', hierarchy=_Hierarchy.Term)
+    Minus = _Spec[None](Operator.Minus.regex(), hierarchy=_Hierarchy.Term)
     """Оператор -"""
 
-    Slash = _Spec[None](r'/', hierarchy=_Hierarchy.Expr)
+    Slash = _Spec[None](Operator.Slash.regex(), hierarchy=_Hierarchy.Expr)
     """Оператор /"""
-    Star = _Spec[None](r'\*', hierarchy=_Hierarchy.Expr)
+    Star = _Spec[None](Operator.Star.regex(), hierarchy=_Hierarchy.Expr)
     """Оператор *"""
 
     # Скобки
