@@ -10,48 +10,10 @@ from typing import Optional
 type _Value = str | int | float | None
 
 
-class _Hierarchy(Enum):
-    """Модификация токена"""
-
-    Stmt = auto()
-    """
-    Директивы, присваивания и другие инструкции.
-    """
-
-    Expr = auto()
-    """
-    Используется для представления всей структуры выражения, которое может быть вычислено или интерпретировано.
-    """
-
-    Term = auto()
-    """
-    Используется для группировки операций, которые имеют одинаковый приоритет, и для обработки более сложных выражений, состоящих из множества факторов.
-    """
-
-    Factor = auto()
-    """
-    Представляет собой базовые элементы выражения, такие как литералы, переменные, доступ к полям структур и выражения в скобках. 
-    Это атомарные значения, которые могут быть использованы в более сложных выражениях.
-    """
-
-
-@dataclass(frozen=True)
-class _Spec[T: _Value]:
-    pattern: str
-    transformer: Optional[Callable[[str], T]] = None
-    hierarchy: Optional[_Hierarchy] = _Hierarchy.Factor
-
-    def transformLexeme(self, lexeme: str) -> T:
-        """Преобразовать лексему в значение"""
-        if self.transformer is None:
-            return None
-
-        return self.transformer(lexeme)
-
-
 class Operator(StrEnum):
     """Операторы"""
 
+    Dot = "."
     Plus = "+"
     Minus = "-"
     Star = "*"
@@ -59,7 +21,74 @@ class Operator(StrEnum):
 
     def regex(self) -> str:
         """Преобразовать значение в регулярное выражение"""
-        return f"/{self.value}"
+        return rf"\{self.value}"
+
+
+class _Kind(Enum):
+    """Вид токена"""
+
+    Skip = auto()
+    Common = auto()
+    Literal = auto()
+    Operator = auto()
+    Bracket = auto()
+    Delimiter = auto()
+
+
+@dataclass(frozen=True)
+class _Spec[T: _Value]:
+    kind: _Kind
+    pattern: str
+
+    def transform(self, lexeme: str) -> T:
+        """Преобразовать лексему в значение"""
+        return None
+
+    @classmethod
+    def bracket(cls, c: str) -> _Spec[None]:
+        """Скобка"""
+        return cls(_Kind.Bracket, rf"\{c}")
+
+    @classmethod
+    def delimiter(cls, c: str) -> _Spec[None]:
+        """Разделитель"""
+        return cls(_Kind.Delimiter, c)
+
+    @classmethod
+    def skip(cls, c: str) -> _Spec[None]:
+        """Пропуск"""
+        return cls(_Kind.Skip, c)
+
+
+@dataclass(frozen=True)
+class _LexemeTransformer[T: _Value](_Spec):
+    transformer: Optional[Callable[[str], T]]
+
+    def transform(self, lexeme: str) -> T:
+        if self.transformer is None:
+            return None
+
+        return self.transformer(lexeme)
+
+    @classmethod
+    def literal[T: _Value](cls, p: str, t: Callable[[str], T]) -> _Spec[T]:
+        """Вид токена - литерал"""
+        return cls(_Kind.Literal, p, t)
+
+    @classmethod
+    def directive(cls) -> _Spec[str]:
+        """Директива"""
+        return cls(_Kind.Common, r'\.[a-zA-Z_]\w*', lambda s: s.lstrip('.'))
+
+
+@dataclass(frozen=True)
+class _SpecOp(_Spec[None]):
+    op: Operator
+
+    @classmethod
+    def new(cls, op: Operator) -> _Spec[None]:
+        """Вид токена - оператор"""
+        return cls(_Kind.Operator, op.regex(), op)
 
 
 class TokenType(Enum):
@@ -67,80 +96,95 @@ class TokenType(Enum):
 
     # Литералы
 
-    String = _Spec[str](r'"([^"]*)"', lambda s: s.strip('"'))
+    String = _LexemeTransformer.literal(r'"([^"]*)"', lambda s: s.strip('"'))
     """Строковый литерал"""
-    Character = _Spec[int](r"'.'", lambda c: ord(c.strip("'")))
+    Character = _LexemeTransformer.literal(r"'.'", lambda c: ord(c.strip("'")))
     """Символьный литерал"""
-    Float = _Spec[float](r'\d+\.\d+', float)
+    Float = _LexemeTransformer.literal(r'\d+\.\d+', float)
     """Вещественный литерал"""
-    Integer = _Spec[int](r'\d+', int)
+    Integer = _LexemeTransformer.literal(r'\d+', int)
     """Целочисленный литерал"""
-    Identifier = _Spec[str](r'[a-zA-Z_]\w*', lambda i: i)
+    Identifier = _LexemeTransformer.literal(r'[a-zA-Z_]\w*', lambda i: i)
     """Идентификатор (переменная, инструкция, константа, метка и т.п.)"""
 
     # Директива
 
-    Directive = _Spec[str](r'\.[a-zA-Z_]\w*', lambda s: s.lstrip('.'), hierarchy=_Hierarchy.Stmt)
+    Directive = _LexemeTransformer.directive()
     """Вызов директивы"""
 
     # Операторы
 
-    Plus = _Spec[None](Operator.Plus.regex(), hierarchy=_Hierarchy.Term)
+    Plus = _SpecOp.new(Operator.Plus)
     """Оператор +"""
-    Minus = _Spec[None](Operator.Minus.regex(), hierarchy=_Hierarchy.Term)
+    Minus = _SpecOp.new(Operator.Minus)
     """Оператор -"""
-
-    Slash = _Spec[None](Operator.Slash.regex(), hierarchy=_Hierarchy.Expr)
+    Slash = _SpecOp.new(Operator.Slash)
     """Оператор /"""
-    Star = _Spec[None](Operator.Star.regex(), hierarchy=_Hierarchy.Expr)
+    Star = _SpecOp.new(Operator.Star)
     """Оператор *"""
+    Dot = _SpecOp.new(Operator.Dot)
+    """Оператор ."""
 
     # Скобки
 
-    OpenRound = _Spec[None](r'\(')
+    OpenRound = _Spec.bracket('(')
     """Открывающая круглая скобка"""
-    CloseRound = _Spec[None](r'\)')
+    CloseRound = _Spec.bracket(')')
     """Закрывающая круглая скобка"""
 
-    OpenFigure = _Spec[None](r'\{')
+    OpenFigure = _Spec.bracket('{')
     """Открывающая фигурная скобка"""
-    CloseFigure = _Spec[None](r'\}')
+    CloseFigure = _Spec.bracket('}')
     """Закрывающая фигурная скобка"""
 
-    OpenSquare = _Spec[None](r'\[')
+    OpenSquare = _Spec.bracket('[')
     """Открывающая Квадратная скобка"""
-    CloseSquare = _Spec[None](r'\]')
+    CloseSquare = _Spec.bracket(']')
     """Закрывающая Квадратная скобка"""
 
-    OpenAngle = _Spec[None](r'\<')
+    OpenAngle = _Spec.bracket('<')
     """Открывающая Угловая скобка"""
-    CloseAngle = _Spec[None](r'\>')
+    CloseAngle = _Spec.bracket('>')
     """Закрывающая Угловая скобка"""
 
     # Разделители
 
-    Assignment = _Spec[None](r'=', hierarchy=_Hierarchy.Stmt)
-    """Оператор = (Присваивание)"""
-    Delimiter = _Spec[None](r',', hierarchy=_Hierarchy.Stmt)
+    Comma = _Spec.delimiter(',')
     """Разделитель аргументов"""
-    Colon = _Spec[None](r':', hierarchy=_Hierarchy.Stmt)
+    Assignment = _Spec.delimiter('=')
+    """Оператор = (Присваивание)"""
+    Colon = _Spec.delimiter(':')
     """Разделитель идентификатора и типа"""
-    StatementEnd = _Spec[None](r'\n', hierarchy=_Hierarchy.Stmt)
+    StatementEnd = _Spec.delimiter(r'\n')
     """Окончание выражения"""
 
-    # Специальные
+    # Пропускающие
 
-    Comment = _Spec(r'#.*', hierarchy=None)
+    Comment = _Spec.skip(r'#.*')
     """Определение комментария"""
-    Skip = _Spec(r'[ \t]+', hierarchy=None)
+    Skip = _Spec.skip(r'[ \t]+')
     """Символы пропуска"""
 
     def transform[T: _Value](self, lexeme: str) -> Optional[Token[T]]:
         """Создать токен на основе типа и лексемы"""
-        if self.value.hierarchy is None:
+        if self.value.kind is _Kind.Skip:
             return None
 
-        return Token(self, self.value.transformLexeme(lexeme))
+        return Token(self, self.value.transform(lexeme))
+
+    def _is(self, e: _Kind) -> bool:
+        return self.value.kind == e
+
+    def isLiteral(self) -> bool:
+        """Токен является оператором"""
+        return self._is(_Kind.Literal)
+
+    def asOperator(self) -> Optional[Operator]:
+        """Преобразовать токен в оператор"""
+        if isinstance(self.value, _SpecOp):
+            return self.value.op
+
+        return None
 
     @classmethod
     def build_regex(cls) -> str:
@@ -153,7 +197,7 @@ class Token[T: _Value]:
     """Токен (Единица языка) Имеет тип и лексему"""
 
     type: TokenType
-    value: T
+    value: T = None
 
     def __repr__(self) -> str:
         if self.value is None:

@@ -48,3 +48,6 @@ class Result[T, E]:
             return self._value
 
         raise Panic(f"Attempted to unwrap an error: {self._error}")
+
+    def __str__(self) -> str:
+        return f"Ok({self._value})" if self.isOk() else f"Err({self._error})"

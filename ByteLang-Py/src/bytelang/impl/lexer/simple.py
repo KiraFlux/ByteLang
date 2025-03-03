@@ -53,6 +53,8 @@ def _test():
     code_ok = """.this_is_directive "String1" "String2" 'c' 12345 123.456 identifier () {} [] <> + - * / = , : # comment"""
     code_error = "а 123456 о 123456 у 123456         ш             рз2нт !;№ 123456 "
 
+    print("begin")
+
     lexer = SimpleLexer()
     result = lexer.run(StringIO(code_ok))
 
@@ -62,6 +64,8 @@ def _test():
 
     for token in result.unwrap():
         print(token)
+
+    print("end")
 
 
 if __name__ == "__main__":
