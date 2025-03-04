@@ -92,18 +92,24 @@ def _test():
     from bytelang.core.stream import Stream
 
     tokens = (
+        Token(TokenType.Identifier, "MyInstruction"),
         Token(TokenType.Identifier, "x"),
         Token(TokenType.Comma), Token(TokenType.Integer, 1),
         Token(TokenType.Comma), Token(TokenType.String, "string"),
-        Token(TokenType.Comma), Token(TokenType.Float, 123.456),
-        Token(TokenType.Comma), Token(TokenType.Character, 0xFF),
+        Token(TokenType.StatementEnd),
 
+        Token(TokenType.Identifier, "MyInstruction2"),
+        Token(TokenType.Float, 123.456), Token(TokenType.Comma), Token(TokenType.Character, 0xFF),
         Token(TokenType.StatementEnd),
     )
 
     p = AlphaParser()
     p.tokens = Stream(tokens)
-    print(p.arguments(TokenType.Comma))
+
+    print(Instruction.parse(p))
+    print(Instruction.parse(p))
+
+    # print(p.arguments(TokenType.Comma))
 
 
 if __name__ == '__main__':
