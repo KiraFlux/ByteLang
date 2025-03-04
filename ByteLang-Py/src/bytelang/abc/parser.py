@@ -72,6 +72,41 @@ class Parser(ABC):
 
         return Result.error(errors) if errors else Result.ok(items)
 
+    def braceArguments[T: Node](
+            self,
+            element_parser: Callable[[], Result[T, Iterable[str]]],
+            brace_open: TokenType,
+            brace_close: TokenType,
+            delimiter: TokenType = TokenType.Comma
+    ) -> Result[Sequence[T], Iterable[str]]:
+        """
+        Парсинг аргументов в скобках
+        :param element_parser: Парсер элементов
+        :param brace_open: открывающий токен
+        :param brace_close: закрывающий токен
+        :param delimiter: разделитель элементов
+        :return: Последовательность узлов согласно функции парсера элементов
+        """
+        may_open_brace = self.tokens.next()
+
+        if may_open_brace is None:
+            return Result.error((f"none token",))
+
+        if may_open_brace.type != brace_open:
+            return Result.error((f"Ожидалось: {brace_open}, got {may_open_brace}",))
+
+        args = self.arguments(element_parser, delimiter, brace_close)
+
+        end = self.tokens.next()
+
+        if end is None:
+            return Result.error((f"none token",))
+
+        if end.type != TokenType.StatementEnd:
+            return Result.error((f"Ожидалось: {TokenType.StatementEnd}, got {end}",))
+
+        return args
+
     def statement(self) -> Result[Optional[Statement], Iterable[str]]:
         """Парсинг statement"""
         token = self.tokens.peek()
