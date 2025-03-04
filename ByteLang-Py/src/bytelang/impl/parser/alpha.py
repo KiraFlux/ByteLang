@@ -1,4 +1,5 @@
 """Альфа-реализация парсера"""
+from typing import Final
 from typing import Iterable
 from typing import Sequence
 
@@ -9,13 +10,19 @@ from bytelang.abc.node import Statement
 from bytelang.abc.parser import Parser
 from bytelang.core.tokens import Token
 from bytelang.core.tokens import TokenType
+from bytelang.impl.node.directives import EnvSelectDirective
+from bytelang.impl.node.directives import ParsableDirective
 from bytelang.impl.node.gamma import Identifier
 from bytelang.impl.node.gamma import Instruction
 from bytelang.impl.node.gamma import Literal
+from bytelang.impl.registry.immediate import ImmediateRegistry
 from rustpy.result import Result
 
 
 class AlphaParser(Parser):
+    directive_registry: Final[ImmediateRegistry[str, type[ParsableDirective]]] = ImmediateRegistry((
+        ("env", EnvSelectDirective),
+    ))
 
     def expression(self) -> Result[Expression, Iterable[str]]:
         match self.tokens.peek().type:
@@ -27,9 +34,6 @@ class AlphaParser(Parser):
 
             case not_expression_token:
                 return Result.error((f"Token not an expression: {not_expression_token}",))
-
-    def directive(self) -> Result[Directive, Iterable[str]]:
-        pass
 
     def arguments(self, delimiter: TokenType) -> Result[Sequence[Expression], Iterable[str]]:
         if self.tokens.peek().type == TokenType.StatementEnd:
@@ -61,6 +65,18 @@ class AlphaParser(Parser):
 
         return Result.error(errors) if errors else Result.ok(args)
 
+    def directive(self) -> Result[Directive, Iterable[str]]:
+        if (identifier := self.tokens.next()) is None:
+            return Result.error(("Ожидался токен",))
+
+        if identifier.type != TokenType.Directive:
+            return Result.error((f"Ожидалась директива, получено: {identifier}",))
+
+        if (directive := self.directive_registry.get(identifier.value)) is None:
+            return Result.error((f"Не удалось найти директиву: {identifier}",))
+
+        return directive.parse(self)
+
     def program(self) -> Result[Program, Iterable[str]]:
         statements = list[Statement]()
         errors = list[str]()
@@ -69,7 +85,6 @@ class AlphaParser(Parser):
             match token.type:
                 case TokenType.StatementEnd:
                     self.tokens.next()
-                    continue
 
                 case TokenType.Identifier:
                     result = Instruction.parse(self)
@@ -79,8 +94,17 @@ class AlphaParser(Parser):
                     else:
                         statements.append(result.unwrap())
 
+                case TokenType.Directive:
+                    result = self.directive()
+
+                    if result.isError():
+                        errors.extend(result.getError())
+                    else:
+                        statements.append(result.unwrap())
+
                 case _:
                     errors.append(f"Неуместный токен: {token}")
+                    self.tokens.next()
 
         if errors:
             return Result.error(errors)
@@ -89,8 +113,6 @@ class AlphaParser(Parser):
 
 
 def _test():
-    from bytelang.core.stream import Stream
-
     tokens = (
         Token(TokenType.Identifier, "MyInstruction"),
         Token(TokenType.Identifier, "x"),
@@ -101,15 +123,18 @@ def _test():
         Token(TokenType.Identifier, "MyInstruction2"),
         Token(TokenType.Float, 123.456), Token(TokenType.Comma), Token(TokenType.Character, 0xFF),
         Token(TokenType.StatementEnd),
+
+        Token(TokenType.Directive, "env"),
+        Token(TokenType.Identifier, "esp32"),
+        Token(TokenType.StatementEnd),
+
+        # Token(TokenType.Directive, "i_am_not_exist"),
+        Token(TokenType.StatementEnd),
     )
 
     p = AlphaParser()
-    p.tokens = Stream(tokens)
 
-    print(Instruction.parse(p))
-    print(Instruction.parse(p))
-
-    # print(p.arguments(TokenType.Comma))
+    print(p.run(tokens))
 
 
 if __name__ == '__main__':

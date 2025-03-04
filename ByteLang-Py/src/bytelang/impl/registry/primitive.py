@@ -1,6 +1,6 @@
 from typing import Iterable
 
-from bytelang.abc.registry import ImmediateRegistry
+from bytelang.impl.registry.immediate import ImmediateRegistry
 from bytelang.impl.serializer.primitive import Primitive
 from bytelang.impl.serializer.primitive import f32
 from bytelang.impl.serializer.primitive import f64

@@ -13,12 +13,11 @@ class Stream[T]:
 
     def peek(self) -> Optional[T]:
         """Получить последнее значение"""
-        return self._elements[self._position]
+        if self._position < len(self._elements):
+            return self._elements[self._position]
 
     def next(self) -> Optional[T]:
         """Получить следующий элемент"""
-        if self._position < len(self._elements):
-            ret = self.peek()
-            self._position += 1
-            return ret
-        return None
+        ret = self.peek()
+        self._position += 1
+        return ret
