@@ -30,6 +30,19 @@ class Parser(ABC):
     def expression(self) -> Result[Expression, Iterable[str]]:
         """Парсинг выражения"""
 
+    def consume(self, token_type: TokenType) -> Result[Token, str]:
+        """Получить ожидаемый токен"""
+
+        token = self.tokens.next()
+
+        if token is None:
+            return Result.error(f"Expect: {token_type}, got EOF")
+
+        if token.type != token_type:
+            return Result.error(f"Expect: {token_type}, got {token}")
+
+        return Result.ok(token)
+
     def arguments[T: Node](
             self,
             element_parser: Callable[[], Result[T, Iterable[str]]],
@@ -70,7 +83,7 @@ class Parser(ABC):
                 errors.append(f"Expected '{delimiter}' between arguments")
                 break
 
-        return Result.error(errors) if errors else Result.ok(items)
+        return Result.chose(not errors, items, errors)
 
     def braceArguments[T: Node](
             self,
@@ -87,23 +100,14 @@ class Parser(ABC):
         :param delimiter: разделитель элементов
         :return: Последовательность узлов согласно функции парсера элементов
         """
-        may_open_brace = self.tokens.next()
 
-        if may_open_brace is None:
-            return Result.error((f"none token",))
-
-        if may_open_brace.type != brace_open:
-            return Result.error((f"Ожидалось: {brace_open}, got {may_open_brace}",))
+        if (begin := self.consume(brace_open)).isError():
+            return Result.error((begin.getError(),))
 
         args = self.arguments(element_parser, delimiter, brace_close)
 
-        end = self.tokens.next()
-
-        if end is None:
-            return Result.error((f"none token",))
-
-        if end.type != TokenType.StatementEnd:
-            return Result.error((f"Ожидалось: {TokenType.StatementEnd}, got {end}",))
+        if (end := self.consume(TokenType.StatementEnd)).isError():
+            return Result.error((end.getError(),))
 
         return args
 
@@ -132,4 +136,4 @@ class Parser(ABC):
             else:
                 errors.extend(node.getError())
 
-        return Result.error(errors) if errors else Result.ok(Program(statements))
+        return Result.chose(not errors, Program(statements), errors)

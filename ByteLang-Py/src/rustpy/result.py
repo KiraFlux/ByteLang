@@ -27,6 +27,11 @@ class Result[T, E]:
         """Создать результат-ошибку"""
         return cls(_is_ok=True, _value=value, _error=None)
 
+    @classmethod
+    def chose(cls, make_ok: bool, value: T, error: E) -> Output:
+        """Выбор результата на основе входного значения"""
+        return cls.ok(value) if make_ok else cls.error(error)
+
     def map[OtherErr](self, error_transformer: Callable[[E], OtherErr]) -> Output:
         """Преобразовать результат с ошибкой данного типа в результат ошибки этого типа"""
         return self if self.isOk() else self.error(error_transformer(self.getError()))

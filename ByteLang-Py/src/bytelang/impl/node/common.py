@@ -32,17 +32,24 @@ class ParsableDirective(Directive, ABC):
 class ConstDeclareDirective(ParsableDirective):
     """Объявление константного значения"""
 
+    id: Identifier
+    """Идентификатор константы"""
     expression: Expression
     """Выражение значения"""
 
     @classmethod
     def parse(cls, parser: Parser) -> Result[Directive, Iterable[str]]:
+        _id = Identifier.parse(parser.tokens)
+
+        if _id.isError():
+            return Result.error(_id.getError())
+
         result = parser.expression()
 
         if result.isError():
             return Result.error(result.getError())
 
-        return Result.ok(cls(result.unwrap()))
+        return Result.ok(cls(_id.unwrap(), result.unwrap()))
 
 
 @dataclass(frozen=True)
