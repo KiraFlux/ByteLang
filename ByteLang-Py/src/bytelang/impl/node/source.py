@@ -57,3 +57,19 @@ class EnvSelectDirective(ParsableDirective):
             return Result.error((env.getError(),))
 
         return Result.ok(cls(env.unwrap()))
+
+
+@dataclass(frozen=True)
+class MarkDeclareDirective(ParsableDirective):
+    """Директива объявления метки"""
+    mark: Identifier
+    """Имя метки"""
+
+    @classmethod
+    def parse(cls, parser: Parser) -> Result[Directive, Iterable[str]]:
+        mark = Identifier.parse(parser.tokens)
+
+        if mark.isError():
+            return Result.error((mark.getError(),))
+
+        return Result.ok(cls(mark.unwrap()))
