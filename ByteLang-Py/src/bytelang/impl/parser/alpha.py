@@ -11,27 +11,34 @@ from bytelang.core.tokens import Token
 from bytelang.core.tokens import TokenType
 from bytelang.impl.node.gamma import Identifier
 from bytelang.impl.node.gamma import Instruction
+from bytelang.impl.node.gamma import Literal
 from rustpy.result import Result
 
 
 class AlphaParser(Parser):
 
     def expression(self) -> Result[Expression, Iterable[str]]:
-        res = Identifier.parse(self.tokens)
+        match self.tokens.peek().type:
+            case TokenType.Identifier:
+                return Identifier.parse(self.tokens).map(lambda e: (e,))
 
-        if res.isError():
-            return Result.error((res.getError(),))
+            case literal_token if literal_token.isLiteral():
+                return Literal.parse(self.tokens).map(lambda e: (e,))
 
-        return Result.ok(res.unwrap())
+            case not_expression_token:
+                return Result.error((f"Token not an expression: {not_expression_token}",))
 
     def directive(self) -> Result[Directive, Iterable[str]]:
         pass
 
     def arguments(self, delimiter: TokenType) -> Result[Sequence[Expression], Iterable[str]]:
+        if self.tokens.peek().type == TokenType.StatementEnd:
+            return Result.ok(tuple())
+
         args = list[Expression]()
         errors = list[str]()
 
-        while self.tokens.peek().type != TokenType.StatementEnd:
+        while True:
             result = self.expression()
 
             if result.isError():
@@ -41,14 +48,16 @@ class AlphaParser(Parser):
 
             token = self.tokens.next()
 
+            if token is None:
+                errors.append(f"Ожидался токен")
+                break
+
             if token.type == TokenType.StatementEnd:
                 break
 
             if token.type != delimiter:
                 errors.append(f"Expected '{delimiter}' between arguments")
                 break
-
-        self.tokens.next()
 
         return Result.error(errors) if errors else Result.ok(args)
 
@@ -80,12 +89,21 @@ class AlphaParser(Parser):
 
 
 def _test():
+    from bytelang.core.stream import Stream
+
     tokens = (
-        Token(TokenType.Star),
+        Token(TokenType.Identifier, "x"),
+        Token(TokenType.Comma), Token(TokenType.Integer, 1),
+        Token(TokenType.Comma), Token(TokenType.String, "string"),
+        Token(TokenType.Comma), Token(TokenType.Float, 123.456),
+        Token(TokenType.Comma), Token(TokenType.Character, 0xFF),
+
+        Token(TokenType.StatementEnd),
     )
 
     p = AlphaParser()
-    print(p.run(tokens))
+    p.tokens = Stream(tokens)
+    print(p.arguments(TokenType.Comma))
 
 
 if __name__ == '__main__':

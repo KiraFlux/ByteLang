@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Callable
 from typing import Optional
 
 from rustpy.exceptions import Panic
@@ -25,6 +26,10 @@ class Result[T, E]:
     def ok(cls, value: T) -> Output:
         """Создать результат-ошибку"""
         return cls(_is_ok=True, _value=value, _error=None)
+
+    def map[OtherErr](self, error_transformer: Callable[[E], OtherErr]) -> Output:
+        """Преобразовать результат с ошибкой данного типа в результат ошибки этого типа"""
+        return self if self.isOk() else self.error(error_transformer(self.getError()))
 
     def isOk(self) -> bool:
         """Результат является значением"""
