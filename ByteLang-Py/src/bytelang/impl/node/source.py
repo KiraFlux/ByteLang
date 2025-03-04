@@ -34,7 +34,7 @@ class Instruction(Statement):
         if id_result.isError():
             errors.append(id_result.getError())
 
-        args = parser.arguments(TokenType.Comma)
+        args = parser.arguments(parser.expression, TokenType.Comma, TokenType.StatementEnd)
 
         if args.isError():
             errors.extend(args.getError())
