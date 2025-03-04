@@ -1,17 +1,46 @@
+"""Общеиспользуемые узлы АСД (Package, Source)"""
+
 from __future__ import annotations
 
+from abc import ABC
+from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Iterable
-from typing import Sequence
 
+from bytelang.abc.node import Directive
 from bytelang.abc.node import Expression
-from bytelang.abc.node import Statement
 from bytelang.abc.parser import Parser
 from bytelang.core.stream import Stream
 from bytelang.core.tokens import Operator
 from bytelang.core.tokens import Token
 from bytelang.core.tokens import TokenType
 from rustpy.result import Result
+
+
+class ParsableDirective(Directive, ABC):
+    """Директива, поддерживающая парсинг из токенов"""
+
+    @classmethod
+    @abstractmethod
+    def parse(cls, parser: Parser) -> Result[Directive, Iterable[str]]:
+        """Преобразовать токены в конкретную директиву"""
+
+
+@dataclass(frozen=True)
+class ConstDeclareDirective(ParsableDirective):
+    """Объявление константного значения"""
+
+    expression: Expression
+    """Выражение значения"""
+
+    @classmethod
+    def parse(cls, parser: Parser) -> Result[Directive, Iterable[str]]:
+        result = parser.expression()
+
+        if result.isError():
+            return Result.error(result.getError())
+
+        return Result.ok(cls(result.unwrap()))
 
 
 @dataclass(frozen=True)
@@ -54,8 +83,6 @@ class Literal[T: (int, float, str)](Expression):
 class UnaryOp(Expression):
     """Узел Префиксной Унарной операции"""
 
-    from bytelang.abc.parser import Parser
-
     op: Operator
     """Оператор"""
     operand: Expression
@@ -88,30 +115,3 @@ class BinaryOp(Expression):
     """Левый операнд"""
     right: Expression
     """Правый операнд"""
-
-
-@dataclass(frozen=True)
-class Instruction(Statement):
-    """Узел вызова инструкции"""
-
-    id: Identifier
-    """Идентификатор выражения"""
-    args: Sequence[Expression]
-    """Аргументы"""
-
-    @classmethod
-    def parse(cls, parser: Parser) -> Result[Instruction, Iterable[str]]:
-        """Парсинг инструкций"""
-        errors = list[str]()
-
-        id_result = Identifier.parse(parser.tokens)
-
-        if id_result.isError():
-            errors.append(id_result.getError())
-
-        args = parser.arguments(TokenType.Comma)
-
-        if args.isError():
-            errors.extend(args.getError())
-
-        return Result.error(errors) if errors else Result.ok(Instruction(id_result.unwrap(), args.unwrap()))
