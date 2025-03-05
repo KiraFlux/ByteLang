@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Iterable
+from typing import Sequence
 
 from bytelang.abc.node import Expression
 from bytelang.abc.parser import Parser
@@ -86,3 +87,27 @@ class BinaryOp(Expression):
     """Левый операнд"""
     right: Expression
     """Правый операнд"""
+
+
+@dataclass(frozen=True)
+class Macro(Expression):
+    """Узел развёртки макроса"""
+
+    id: Identifier
+    """Идентификатор макроса"""
+    args: Sequence[Expression]
+    """Аргументы развертки"""
+
+    @classmethod
+    def parse(cls, parser: Parser) -> Result[Macro, Iterable[str]]:
+        _id = parser.consume(TokenType.Macro)
+
+        if _id.isError():
+            return Result.error(_id.getError())
+
+        args = parser.braceArguments(parser.expression, TokenType.OpenRound, TokenType.CloseRound)
+
+        if args.isError():
+            return Result.error(args.getError())
+
+        return Result.ok(cls(Identifier(_id.unwrap().value), args.unwrap()))

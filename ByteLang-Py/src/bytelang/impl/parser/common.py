@@ -13,6 +13,7 @@ from bytelang.impl.node.common.directive import ParsableDirective
 from bytelang.impl.node.common.directive import StructDeclareDirective
 from bytelang.impl.node.common.expression import Identifier
 from bytelang.impl.node.common.expression import Literal
+from bytelang.impl.node.common.expression import Macro
 from bytelang.impl.registry.immediate import ImmediateRegistry
 from rustpy.result import Result
 
@@ -36,6 +37,9 @@ class CommonParser(Parser):
         match self.tokens.peek().type:
             case TokenType.Identifier:
                 return Identifier.parse(self.tokens).map(lambda e: (e,))
+
+            case TokenType.Macro:
+                return Macro.parse(self)
 
             case literal_token if literal_token.isLiteral():
                 return Literal.parse(self.tokens).map(lambda e: (e,))
@@ -68,7 +72,7 @@ def _test():
     code = """
     .struct MyStructType { byte: u8, int: i32 }
     .macro foo(a, b, c) -> 12345
-    .const hola = 12345
+    .const hola = @foo(1, 2, 3)
     """
 
     try:
