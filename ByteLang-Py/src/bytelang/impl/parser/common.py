@@ -5,11 +5,11 @@ from typing import Optional
 from bytelang.abc.node import Directive
 from bytelang.abc.node import Expression
 from bytelang.abc.node import Statement
+from bytelang.abc.parser import Parsable
 from bytelang.abc.parser import Parser
 from bytelang.core.tokens import TokenType
 from bytelang.impl.node.common.directive import ConstDeclareDirective
 from bytelang.impl.node.common.directive import MacroDeclareDirective
-from bytelang.impl.node.common.directive import ParsableDirective
 from bytelang.impl.node.common.directive import StructDeclareDirective
 from bytelang.impl.node.common.expression import Identifier
 from bytelang.impl.node.common.expression import Literal
@@ -22,10 +22,10 @@ class CommonParser(Parser):
     """Общий парсер"""
 
     def __init__(self) -> None:
-        self.directive_registry: Final[ImmediateRegistry[str, type[ParsableDirective]]] = ImmediateRegistry(self.getDirectives())
+        self.directive_registry: Final[ImmediateRegistry[str, type[Parsable[Directive]]]] = ImmediateRegistry(self.getDirectives())
 
     @classmethod
-    def getDirectives(cls) -> Iterable[tuple[str, type[ParsableDirective]]]:
+    def getDirectives(cls) -> Iterable[tuple[str, type[Parsable[Directive]]]]:
         """Получить директивы"""
         return (
             ("const", ConstDeclareDirective),
@@ -36,13 +36,13 @@ class CommonParser(Parser):
     def expression(self) -> Result[Expression, Iterable[str]]:
         match self.tokens.peek().type:
             case TokenType.Identifier:
-                return Identifier.parse(self.tokens).map(lambda e: (e,))
+                return Identifier.parse(self)
 
             case TokenType.Macro:
                 return Macro.parse(self)
 
             case literal_token if literal_token.isLiteral():
-                return Literal.parse(self.tokens).map(lambda e: (e,))
+                return Literal.parse(self)
 
             case not_expression_token:
                 return Result.error((f"Token not an expression: {not_expression_token}",))
@@ -76,7 +76,6 @@ def _test():
     """
 
     try:
-
         tokens = SimpleLexer().run(StringIO(code)).unwrap()
         print(tokens)
         print(CommonParser().run(tokens).unwrap())

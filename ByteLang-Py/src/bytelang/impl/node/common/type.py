@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Iterable
 from typing import Optional
 
 from bytelang.abc.node import Expression
 from bytelang.abc.node import Node
+from bytelang.abc.parser import Parsable
+from bytelang.abc.parser import Parser
 from bytelang.core.stream import Stream
 from bytelang.core.tokens import Token
 from bytelang.core.tokens import TokenType
@@ -17,16 +20,16 @@ class Type(Node):
 
 
 @dataclass(frozen=True)
-class PureType(Type):
+class PureType(Type, Parsable[Type]):
     """Чистый тип"""
 
     id: Identifier
     """Идентификатор типа"""
 
     @classmethod
-    def parse(cls, stream: Stream) -> Result[Type, str]:
+    def parse(cls, parser: Parser) -> Result[Type, Iterable[str]]:
         """Создать чистый тип на основе идентификатора"""
-        type_id = Identifier.parse(stream)
+        type_id = Identifier.parse(parser)
 
         if type_id.isError():
             return Result.error(type_id.getError())
@@ -56,7 +59,7 @@ class ArrayType(Type):
 
 
 @dataclass(frozen=True)
-class Field(Node):
+class Field(Node, Parsable[Node]):
     """Узел объявления поля"""
 
     name: Identifier
@@ -65,16 +68,16 @@ class Field(Node):
     """Тип поля"""
 
     @classmethod
-    def parse(cls, stream: Stream[Token]) -> Result[Field, str]:
+    def parse(cls, parser: Parser) -> Result[Field, Iterable[str]]:
         """Парсинг токенов в поле"""
 
-        if (name := Identifier.parse(stream)).isError():
+        if (name := Identifier.parse(parser)).isError():
             return Result.error(name.getError())
 
-        if (token := stream.next()).type != TokenType.Colon:
-            return Result.error(f"Invalid token: {token}")
+        if (token := parser.consume(TokenType.Colon)).isError():
+            return Result.error(token.getError())
 
-        if (_type := PureType.parse(stream)).isError():
+        if (_type := PureType.parse(parser)).isError():
             return Result.error(_type.getError())
 
         return Result.ok(cls(name.unwrap(), _type.unwrap()))

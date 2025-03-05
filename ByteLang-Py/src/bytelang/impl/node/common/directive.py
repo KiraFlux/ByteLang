@@ -1,31 +1,22 @@
 from __future__ import annotations
 
-from abc import ABC
-from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Iterable
 from typing import Sequence
 
 from bytelang.abc.node import Directive
 from bytelang.abc.node import Expression
+from bytelang.abc.node import Node
+from bytelang.abc.parser import Parsable
 from bytelang.abc.parser import Parser
 from bytelang.core.tokens import TokenType
-from bytelang.impl.node.common.type import Field
 from bytelang.impl.node.common.expression import Identifier
+from bytelang.impl.node.common.type import Field
 from rustpy.result import Result
 
 
-class ParsableDirective(Directive, ABC):
-    """Директива, поддерживающая парсинг из токенов"""
-
-    @classmethod
-    @abstractmethod
-    def parse(cls, parser: Parser) -> Result[Directive, Iterable[str]]:
-        """Преобразовать токены в конкретную директиву"""
-
-
 @dataclass(frozen=True)
-class ConstDeclareDirective(ParsableDirective):
+class ConstDeclareDirective(Directive, Parsable[Directive]):
     """Объявление константного значения"""
 
     id: Identifier
@@ -35,7 +26,7 @@ class ConstDeclareDirective(ParsableDirective):
 
     @classmethod
     def parse(cls, parser: Parser) -> Result[Directive, Iterable[str]]:
-        _id = Identifier.parse(parser.tokens)
+        _id = Identifier.parse(parser)
 
         if _id.isError():
             return Result.error(_id.getError())
@@ -52,7 +43,7 @@ class ConstDeclareDirective(ParsableDirective):
 
 
 @dataclass(frozen=True)
-class StructDeclareDirective(ParsableDirective):
+class StructDeclareDirective(Directive, Parsable[Directive]):
     """Объявление структурного типа"""
 
     id: Identifier
@@ -61,13 +52,13 @@ class StructDeclareDirective(ParsableDirective):
     """Поля структуры"""
 
     @classmethod
-    def parse(cls, parser: Parser) -> Result[Directive, Iterable[str]]:
-        _id = Identifier.parse(parser.tokens)
+    def parse(cls, parser: Parser) -> Result[Parsable[Directive], Iterable[str]]:
+        _id = Identifier.parse(parser)
 
         if _id.isError():
-            return Result.error((_id.getError(),))
+            return Result.error(_id.getError())
 
-        fields = parser.braceArguments(lambda: Field.parse(parser.tokens).map(lambda e: (e,)), TokenType.OpenFigure, TokenType.CloseFigure)
+        fields = parser.braceArguments(lambda: Field.parse(parser), TokenType.OpenFigure, TokenType.CloseFigure)
 
         if fields.isError():
             return Result.error(fields.getError())
@@ -76,7 +67,7 @@ class StructDeclareDirective(ParsableDirective):
 
 
 @dataclass(frozen=True)
-class MacroDeclareDirective(ParsableDirective):
+class MacroDeclareDirective(Directive, Parsable[Directive]):
     """Узел объявления макроса"""
 
     id: Identifier
@@ -88,13 +79,12 @@ class MacroDeclareDirective(ParsableDirective):
 
     @classmethod
     def parse(cls, parser: Parser) -> Result[Directive, Iterable[str]]:
-        # .macro foo(a, b, c) -> (a + b) * c
-        _id = Identifier.parse(parser.tokens)
+        _id = Identifier.parse(parser)
 
         if _id.isError():
-            return Result.error((_id.getError(),))
+            return Result.error(_id.getError())
 
-        args = parser.braceArguments(lambda: Identifier.parse(parser.tokens).map(lambda e: (e,)), TokenType.OpenRound, TokenType.CloseRound)
+        args = parser.braceArguments(lambda: Identifier.parse(parser), TokenType.OpenRound, TokenType.CloseRound)
 
         if args.isError():
             return Result.error(args.getError())

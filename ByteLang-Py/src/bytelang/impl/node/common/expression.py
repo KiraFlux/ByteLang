@@ -7,52 +7,51 @@ from typing import Iterable
 from typing import Sequence
 
 from bytelang.abc.node import Expression
+from bytelang.abc.parser import Parsable
 from bytelang.abc.parser import Parser
-from bytelang.core.stream import Stream
 from bytelang.core.tokens import Operator
-from bytelang.core.tokens import Token
 from bytelang.core.tokens import TokenType
 from rustpy.result import Result
 
 
 @dataclass(frozen=True)
-class Identifier(Expression):
+class Identifier(Expression, Parsable[Expression]):
     """Узел Идентификатора"""
 
     id: str
     """Имя"""
 
     @classmethod
-    def parse(cls, stream: Stream[Token]) -> Result[Identifier, str]:
+    def parse(cls, parser: Parser) -> Result[Identifier, Iterable[str]]:
         """Парсинг токена в узел Идентификатора"""
-        token = stream.next()
+        token = parser.consume(TokenType.Identifier)
 
-        if token.type == TokenType.Identifier:
-            return Result.ok(cls(token.value))
+        if token.isOk():
+            return Result.ok(cls(token.unwrap().value))
 
-        return Result.error(f"Ожидался идентификатор, получено: {token}")
+        return Result.error((token.getError(),))
 
 
 @dataclass(frozen=True)
-class Literal[T: (int, float, str)](Expression):
+class Literal[T: (int, float, str)](Expression, Parsable[Expression]):
     """Узел Литерала"""
 
     value: T
     """Значение"""
 
     @classmethod
-    def parse(cls, stream: Stream[Token]) -> Result[Literal, str]:
+    def parse(cls, parser: Parser) -> Result[Literal, Iterable[str]]:
         """Парсинг токена в узел Литерала"""
-        token = stream.next()
+        token = parser.tokens.next()
 
         if not token.type.isLiteral():
-            return Result.error(f"Ожидался литерал, получено: {token}")
+            return Result.error((f"Ожидался литерал, получено: {token}",))
 
         return Result.ok(cls(token.value))
 
 
 @dataclass(frozen=True)
-class UnaryOp(Expression):
+class UnaryOp(Expression, Parsable[Expression]):
     """Узел Префиксной Унарной операции"""
 
     op: Operator
@@ -90,7 +89,7 @@ class BinaryOp(Expression):
 
 
 @dataclass(frozen=True)
-class Macro(Expression):
+class Macro(Expression, Parsable[Expression]):
     """Узел развёртки макроса"""
 
     id: Identifier

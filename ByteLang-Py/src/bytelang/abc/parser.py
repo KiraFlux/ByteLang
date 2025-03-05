@@ -104,12 +104,7 @@ class Parser(ABC):
         if (begin := self.consume(brace_open)).isError():
             return Result.error((begin.getError(),))
 
-        args = self.arguments(element_parser, delimiter, brace_close)
-
-        # if (end := self.consume(TokenType.StatementEnd)).isError():
-        #     return Result.error((end.getError(),))
-
-        return args
+        return self.arguments(element_parser, delimiter, brace_close)
 
     def statement(self) -> Result[Optional[Statement], Iterable[str]]:
         """Парсинг statement"""
@@ -137,3 +132,11 @@ class Parser(ABC):
                 errors.extend(node.getError())
 
         return Result.chose(not errors, Program(statements), errors)
+
+
+class Parsable[T: Node]:
+
+    @classmethod
+    @abstractmethod
+    def parse(cls, parser: Parser) -> Result[T, Iterable[str]]:
+        """Парсинг узла с помощью парсера"""
