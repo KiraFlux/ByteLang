@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from abc import ABC
-from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Final
 from typing import Sequence
