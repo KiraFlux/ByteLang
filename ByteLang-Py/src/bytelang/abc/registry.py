@@ -34,6 +34,10 @@ class RuntimeRegistry[Key, Item](Registry, ABC):
         """Зарегистрировать элемент"""
         self._items[key] = item
 
+    def extend(self, items: Iterable[tuple[Key, Item]]):
+        """Расширить значения реестра"""
+        self._items.update(items)
+
 
 class LazyRegistry[Key, Item](Registry[Key, Item]):
     """Ленивый реестр - загрузка происходит по мере необходимости"""

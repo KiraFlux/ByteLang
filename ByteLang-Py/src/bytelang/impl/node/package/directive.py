@@ -6,9 +6,9 @@ from typing import Sequence
 from bytelang.abc.node import Directive
 from bytelang.abc.parser import Parser
 from bytelang.core.tokens import TokenType
-from bytelang.impl.node.common import Field
-from bytelang.impl.node.common import Identifier
-from bytelang.impl.node.common import ParsableDirective
+from bytelang.impl.node.common.type import Field
+from bytelang.impl.node.common.expression import Identifier
+from bytelang.impl.node.common.directive import ParsableDirective
 from rustpy.result import Result
 
 

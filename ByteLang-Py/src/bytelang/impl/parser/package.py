@@ -2,8 +2,8 @@
 from itertools import chain
 from typing import Iterable
 
-from bytelang.impl.node.common import ParsableDirective
-from bytelang.impl.node.package import InstructionDeclareDirective
+from bytelang.impl.node.common.directive import ParsableDirective
+from bytelang.impl.node.package.directive import InstructionDeclareDirective
 from bytelang.impl.parser.common import CommonParser
 
 
@@ -18,19 +18,29 @@ class PackageParser(CommonParser):
 
 def _test():
     from bytelang.impl.lexer.simple import SimpleLexer
-
-    lex = SimpleLexer()
-
     from io import StringIO
-    tokens = lex.run(StringIO(".inst my_test_instruction(a: u32, b: i32)\n"))
+    from rustpy.exceptions import Panic
 
-    print(tokens)
+    code = """
+    
+    .struct MyStruct { byte: u8, int: i32 }
+    
+    .inst MyInstruction(a: u8, context: MyStruct)
+    
+    .const MyConst = 12345
+    
+    """
 
-    p = PackageParser()
+    try:
 
-    ast = p.run(tokens.unwrap())
+        tokens = SimpleLexer().run(StringIO(code)).unwrap()
+        print(tokens)
+        print(PackageParser().run(tokens).unwrap())
 
-    print(ast)
+    except Panic as e:
+        print(e)
+
+    return
 
 
 if __name__ == '__main__':

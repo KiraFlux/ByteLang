@@ -80,6 +80,11 @@ class _LexemeTransformer[T: _Value](_Spec):
         """Директива"""
         return cls(_Kind.Common, r'\.[a-zA-Z_]\w*', lambda s: s.lstrip('.'))
 
+    @classmethod
+    def macro(cls) -> _Spec[str]:
+        """Директива"""
+        return cls(_Kind.Common, r'\@[a-zA-Z_]\w*', lambda s: s.lstrip('@'))
+
 
 @dataclass(frozen=True)
 class _SpecOp(_Spec[None]):
@@ -94,6 +99,14 @@ class _SpecOp(_Spec[None]):
 class TokenType(Enum):
     """Тип токена"""
 
+    # Директива
+
+    Directive = _LexemeTransformer.directive()
+    """Вызов директивы"""
+
+    Macro = _LexemeTransformer.macro()
+    """Вызов макроса"""
+
     # Литералы
 
     String = _LexemeTransformer.literal(r'"([^"]*)"', lambda s: s.strip('"'))
@@ -107,10 +120,18 @@ class TokenType(Enum):
     Identifier = _LexemeTransformer.literal(r'[a-zA-Z_]\w*', lambda i: i)
     """Идентификатор (переменная, инструкция, константа, метка и т.п.)"""
 
-    # Директива
+    # Разделители
 
-    Directive = _LexemeTransformer.directive()
-    """Вызов директивы"""
+    Comma = _Spec.delimiter(',')
+    """Разделитель аргументов"""
+    Assignment = _Spec.delimiter('=')
+    """Оператор = (Присваивание)"""
+    Colon = _Spec.delimiter(':')
+    """Разделитель идентификатора и типа"""
+    Arrow = _Spec.delimiter('->')
+    """Разделитель сигнатуры и возвращаемого значения"""
+    StatementEnd = _Spec.delimiter(r'\n')
+    """Окончание выражения"""
 
     # Операторы
 
@@ -146,17 +167,6 @@ class TokenType(Enum):
     """Открывающая Угловая скобка"""
     CloseAngle = _Spec.bracket('>')
     """Закрывающая Угловая скобка"""
-
-    # Разделители
-
-    Comma = _Spec.delimiter(',')
-    """Разделитель аргументов"""
-    Assignment = _Spec.delimiter('=')
-    """Оператор = (Присваивание)"""
-    Colon = _Spec.delimiter(':')
-    """Разделитель идентификатора и типа"""
-    StatementEnd = _Spec.delimiter(r'\n')
-    """Окончание выражения"""
 
     # Пропускающие
 

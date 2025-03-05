@@ -106,8 +106,8 @@ class Parser(ABC):
 
         args = self.arguments(element_parser, delimiter, brace_close)
 
-        if (end := self.consume(TokenType.StatementEnd)).isError():
-            return Result.error((end.getError(),))
+        # if (end := self.consume(TokenType.StatementEnd)).isError():
+        #     return Result.error((end.getError(),))
 
         return args
 

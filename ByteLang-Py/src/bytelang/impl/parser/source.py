@@ -5,10 +5,10 @@ from typing import Optional
 
 from bytelang.abc.node import Statement
 from bytelang.core.tokens import TokenType
-from bytelang.impl.node.common import ParsableDirective
-from bytelang.impl.node.source import EnvSelectDirective
-from bytelang.impl.node.source import Instruction
-from bytelang.impl.node.source import MarkDeclareDirective
+from bytelang.impl.node.common.directive import ParsableDirective
+from bytelang.impl.node.source.directive import EnvSelectDirective
+from bytelang.impl.node.source.statement import Instruction
+from bytelang.impl.node.source.directive import MarkDeclareDirective
 from bytelang.impl.parser.common import CommonParser
 from rustpy.result import Result
 
@@ -82,7 +82,7 @@ def _test():
 
     p.tokens = s
 
-    from bytelang.impl.node.package import InstructionDeclareDirective
+    from bytelang.impl.node.package.directive import InstructionDeclareDirective
 
     print(InstructionDeclareDirective.parse(p))
 
