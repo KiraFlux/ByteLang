@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Iterable
-from typing import Sequence
 
 from bytelang.abc.node import Directive
 from bytelang.abc.node import Expression
@@ -11,12 +10,13 @@ from bytelang.abc.parser import Parser
 from bytelang.core.tokens import TokenType
 from bytelang.impl.node.common.expression import Identifier
 from bytelang.impl.node.common.type import Field
+from rustpy.result import MultipleErrorsResult
 from rustpy.result import Result
 
 
 @dataclass(frozen=True)
-class ConstDeclareDirective(Directive, Parsable[Directive]):
-    """Объявление константного значения"""
+class ConstDefineDirective(Directive, Parsable[Directive]):
+    """Узел определения константного значения"""
 
     id: Identifier
     """Идентификатор константы"""
@@ -25,60 +25,52 @@ class ConstDeclareDirective(Directive, Parsable[Directive]):
 
     @classmethod
     def parse(cls, parser: Parser) -> Result[Directive, Iterable[str]]:
-        _id = Identifier.parse(parser)
+        ret = MultipleErrorsResult()
 
-        if _id.isError():
-            return Result.error(_id.getError())
+        _id = ret.putSingle(Identifier.parse(parser))
+        ret.putSingle(parser.consume(TokenType.Assignment))
+        expr = ret.putMulti(parser.expression())
 
-        if (r := parser.consume(TokenType.Assignment)).isError():
-            return Result.error(r.getError())
-
-        return parser.expression().map(lambda expr: cls(_id.unwrap(), expr))
+        return ret.make(lambda: cls(_id.unwrap(), expr.unwrap()))
 
 
 @dataclass(frozen=True)
-class StructDeclareDirective(Directive, Parsable[Directive]):
-    """Объявление структурного типа"""
+class StructDefineDirective(Directive, Parsable[Directive]):
+    """Узел определения структурного типа"""
 
     id: Identifier
     """Идентификатор типа структуры"""
-    fields: Sequence[Field]
+    fields: Iterable[Field]
     """Поля структуры"""
 
     @classmethod
     def parse(cls, parser: Parser) -> Result[Parsable[Directive], Iterable[str]]:
-        _id = Identifier.parse(parser)
+        ret = MultipleErrorsResult()
 
-        if _id.isError():
-            return Result.error(_id.getError())
+        _id = ret.putSingle(Identifier.parse(parser))
+        fields = ret.putMulti(parser.braceArguments(lambda: Field.parse(parser), TokenType.OpenFigure, TokenType.CloseFigure))
 
-        return parser.braceArguments(lambda: Field.parse(parser), TokenType.OpenFigure, TokenType.CloseFigure).map(lambda f: cls(_id.unwrap(), f))
+        return ret.make(lambda: cls(_id.unwrap(), fields.unwrap()))
 
 
 @dataclass(frozen=True)
-class MacroDeclareDirective(Directive, Parsable[Directive]):
-    """Узел объявления макроса"""
+class MacroDefineDirective(Directive, Parsable[Directive]):
+    """Узел определения макроса"""
 
     id: Identifier
     """Идентификатор макроса"""
-    arguments: Sequence[Identifier]
+    arguments: Iterable[Identifier]
     """Аргументы - идентификаторы"""
     expression: Expression
     """Выражение, в которое развертывается макрос"""
 
     @classmethod
     def parse(cls, parser: Parser) -> Result[Directive, Iterable[str]]:
-        _id = Identifier.parse(parser)
+        ret = MultipleErrorsResult()
 
-        if _id.isError():
-            return Result.error(_id.getError())
+        _id = ret.putSingle(Identifier.parse(parser))
+        args = ret.putMulti(parser.braceArguments(lambda: Identifier.parse(parser), TokenType.OpenRound, TokenType.CloseRound))
+        ret.putSingle(parser.consume(TokenType.Arrow))
+        expr = ret.putMulti(parser.expression())
 
-        args = parser.braceArguments(lambda: Identifier.parse(parser), TokenType.OpenRound, TokenType.CloseRound)
-
-        if args.isError():
-            return Result.error(args.getError())
-
-        if (r := parser.consume(TokenType.Arrow)).isError():
-            return Result.error((r.getError(),))
-
-        return parser.expression().map(lambda expr: cls(_id.unwrap(), args.unwrap(), expr))
+        return ret.make(lambda: cls(_id.unwrap(), args.unwrap(), expr.unwrap()))

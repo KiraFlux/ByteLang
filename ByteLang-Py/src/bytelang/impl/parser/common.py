@@ -8,14 +8,15 @@ from bytelang.abc.node import Statement
 from bytelang.abc.parser import Parsable
 from bytelang.abc.parser import Parser
 from bytelang.core.tokens import TokenType
-from bytelang.impl.node.common.directive import ConstDeclareDirective
-from bytelang.impl.node.common.directive import MacroDeclareDirective
-from bytelang.impl.node.common.directive import StructDeclareDirective
+from bytelang.impl.node.common.directive import ConstDefineDirective
+from bytelang.impl.node.common.directive import MacroDefineDirective
+from bytelang.impl.node.common.directive import StructDefineDirective
 from bytelang.impl.node.common.expression import Identifier
 from bytelang.impl.node.common.expression import Literal
 from bytelang.impl.node.common.expression import Macro
 from bytelang.impl.registry.immediate import ImmediateRegistry
 from rustpy.result import Result
+from rustpy.result import SingleResult
 
 
 class CommonParser(Parser):
@@ -28,9 +29,9 @@ class CommonParser(Parser):
     def getDirectives(cls) -> Iterable[tuple[str, type[Parsable[Directive]]]]:
         """Получить директивы"""
         return (
-            ("const", ConstDeclareDirective),
-            ("struct", StructDeclareDirective),
-            ("macro", MacroDeclareDirective)
+            ("const", ConstDefineDirective),
+            ("struct", StructDefineDirective),
+            ("macro", MacroDefineDirective)
         )
 
     def expression(self) -> Result[Expression, Iterable[str]]:
@@ -45,19 +46,19 @@ class CommonParser(Parser):
                 return Literal.parse(self)
 
             case not_expression_token:
-                return Result.error((f"Token not an expression: {not_expression_token}",))
+                return SingleResult.error((f"Token not an expression: {not_expression_token}",))
 
     def _directive(self) -> Result[Directive, Iterable[str]]:
         """Парсинг директивы"""
         if (identifier := self.consume(TokenType.Directive)).isError():
-            return Result.error(identifier.getError())
+            return SingleResult.error(identifier.getError())
 
         if (directive := self.directive_registry.get(identifier.unwrap().value)) is None:
-            return Result.error((f"Не удалось найти директиву: {identifier}",))
+            return SingleResult.error((f"Не удалось найти директиву: {identifier}",))
 
         return directive.parse(self)
 
-    def statement(self) -> Result[Optional[Statement], Iterable[str]]:
+    def statement(self) -> Optional[Result[Statement, Iterable[str]]]:
         if self.tokens.peek().type == TokenType.Directive:
             return self._directive()
 

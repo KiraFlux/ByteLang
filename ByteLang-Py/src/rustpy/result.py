@@ -1,25 +1,79 @@
+"""Результат"""
+
 from __future__ import annotations
 
+from abc import ABC
+from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Callable
+from typing import Final
+from typing import Iterable
 from typing import Optional
 
 from rustpy.exceptions import Panic
 
 
-@dataclass(frozen=True)
-class Result[T, E]:
+def _pass(v):
+    return v
+
+
+class Result[T, E](ABC):
     """Аналог Result<T, E> из Rust"""
 
-    type Output = Result[T, E]
+    @abstractmethod
+    def _getValue(self) -> Optional[T]:
+        """Получить значение"""
+
+    @abstractmethod
+    def getError(self) -> Optional[E]:
+        """Получить значение ошибки"""
+
+    @abstractmethod
+    def isOk(self) -> bool:
+        """Результат является значением"""
+
+    def map[_T, _E](self, ok: Callable[[T], _T] = _pass, err: Callable[[E], _E] = _pass) -> Result[_T, _E]:
+        """Преобразовать результат"""
+        return SingleResult.ok(ok(self._getValue())) if self.isOk() else SingleResult.error(err(self.getError()))
+
+    def pipe(self, make_if_ok: Callable[[T], Result[T, E]]) -> Result[T, E]:
+        """Если данный результат не является ошибкой - создать новый"""
+        if self.isOk():
+            return make_if_ok(self._getValue())
+        return self
+
+    def flow[_T](self) -> Result[_T, E]:
+        """Перенести ошибку под другой тип значения результата"""
+        return SingleResult.error(self.getError())
+
+    def isError(self) -> bool:
+        """Результат является ошибкой"""
+        return not self.isOk()
+
+    def unwrapOr(self, default: T) -> T:
+        """Получить значение или дефолт если ошибка"""
+        return self._getValue() if self.isOk() else default
+
+    def unwrap(self) -> T:
+        """Получить значение или паника"""
+        if self.isOk():
+            return self._getValue()
+
+        raise Panic(f"Attempted to unwrap an error: {self.getError()}")
+
+    def __repr__(self) -> str:
+        return f"Ok({self.unwrap()})" if self.isOk() else f"Err({self.getError()})"
+
+
+@dataclass(frozen=True, repr=False)
+class SingleResult[T, E](Result[T, E]):
+    """Результат одного значения"""
 
     _is_ok: bool
+
     _value: Optional[T]
     _error: Optional[E]
-
-    @staticmethod
-    def _pass[T](v: T):
-        return v
+    type Output = Result[T, E]
 
     @classmethod
     def error(cls, error: E) -> Output:
@@ -31,41 +85,92 @@ class Result[T, E]:
         """Создать результат-ошибку"""
         return cls(_is_ok=True, _value=value, _error=None)
 
-    @classmethod
-    def chose_LEGACY(cls, make_ok: bool, value: T, error: E) -> Output:
-        """Выбор результата на основе входного значения"""
-        return cls.ok(value) if make_ok else cls.error(error)
-
-    def map_LEGACY[OtherErr](self, error_transformer: Callable[[E], OtherErr]) -> Output:
-        """Преобразовать результат с ошибкой данного типа в результат ошибки этого типа"""
-        return self if self.isOk() else self.error(error_transformer(self.getError()))
-
-    def map[_T, _E](self, ok: Callable[[T], _T] = _pass, err: Callable[[E], _E] = _pass) -> Result[_T, _E]:
-        """Преобразовать результат"""
-        return self.ok(ok(self.unwrap())) if self.isOk() else self.error(err(self.getError()))
-
     def isOk(self) -> bool:
-        """Результат является значением"""
         return self._is_ok
 
-    def isError(self) -> bool:
-        """Результат является ошибкой"""
-        return not self.isOk()
-
     def getError(self) -> Optional[E]:
-        """Получить значение ошибки"""
         return self._error
 
-    def unwrapOr(self, default: T) -> T:
-        """Получить значение или дефолт если ошибка"""
-        return self._value if self.isOk() else default
+    def _getValue(self) -> Optional[T]:
+        return self._value
 
-    def unwrap(self) -> T:
-        """Получить значение или паника"""
+
+class MultipleErrorsResult[T, E](Result[T, Iterable[E]]):
+
+    def __init__(self) -> None:
+        self._errors: Final = list[E]()
+
+    def make(self, ok_maker: Callable[[], T]) -> Result[T, Iterable[E]]:
+        """Попытаться создать результат если не было ошибок"""
         if self.isOk():
-            return self._value
+            return SingleResult.ok(ok_maker())
 
-        raise Panic(f"Attempted to unwrap an error: {self._error}")
+        return SingleResult.error(self.getError())
 
-    def __str__(self) -> str:
-        return f"Ok({self._value})" if self.isOk() else f"Err({self._error})"
+    def putSingle(self, result: Result[T, E]) -> Result[T, E]:
+        """Вернуть результат или поместить ошибку"""
+        if result.isError():
+            self._errors.append(result.getError())
+
+        return result
+
+    def putMulti(self, result: Result[T, Iterable[E]]) -> Result[T, Iterable[E]]:
+        """Поместить результат, содержащий множественные ошибки"""
+        if result.isError():
+            self._errors.extend(result.getError())
+
+        return result
+
+    def getError(self) -> Iterable[E]:
+        return self._errors
+
+    def _getValue(self) -> Optional[T]:
+        raise NotImplementedError
+
+    def isOk(self) -> bool:
+        return len(self._errors) == 0
+
+
+class ResultAccumulator[T, E](Result[Iterable[T], Iterable[E]]):
+    """Аккумулятор результатов"""
+
+    def __init__(self) -> None:
+        self._errors: Final = list[E]()
+        self._results: Final = list[T]()
+
+    def mapSingle(self, ok_maker: Callable[[Iterable[T]], T]) -> Result[T, Iterable[E]]:
+        """Попытаться создать результат если не было ошибок"""
+        if self.isOk():
+            return SingleResult.ok(ok_maker(self._results))
+
+        return SingleResult.error(self.getError())
+
+    def putSingle(self, result: Result[T, E]) -> None:
+        """Положить результат в аккумулятор"""
+        if result.isOk():
+            self._putOk(result.unwrap())
+        else:
+            self.putError(result.getError())
+
+    def putMulti(self, result: Result[T, Iterable[E]]) -> None:
+        """Поместить результат, содержащий множественные ошибки"""
+        if result.isOk():
+            self._putOk(result.unwrap())
+        else:
+            self._errors.extend(result.getError())
+
+    def _putOk(self, value: T) -> None:
+        self._results.append(value)
+
+    def putError(self, error: E) -> None:
+        """Положить ошибку"""
+        self._errors.append(error)
+
+    def isOk(self) -> bool:
+        return len(self._errors) == 0
+
+    def getError(self) -> Optional[Iterable[E]]:
+        return self._errors
+
+    def _getValue(self) -> Optional[Iterable[T]]:
+        return self._results

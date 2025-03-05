@@ -14,6 +14,8 @@ from bytelang.core.stream import Stream
 from bytelang.core.tokens import Token
 from bytelang.core.tokens import TokenType
 from rustpy.result import Result
+from rustpy.result import ResultAccumulator
+from rustpy.result import SingleResult
 
 
 class Parser(ABC):
@@ -36,19 +38,19 @@ class Parser(ABC):
         token = self.tokens.next()
 
         if token is None:
-            return Result.error(f"Expect: {token_type}, got EOF")
+            return SingleResult.error(f"Expect: {token_type}, got EOF")
 
         if token.type != token_type:
-            return Result.error(f"Expect: {token_type}, got {token}")
+            return SingleResult.error(f"Expect: {token_type}, got {token}")
 
-        return Result.ok(token)
+        return SingleResult.ok(token)
 
     def arguments[T: Node](
             self,
             element_parser: Callable[[], Result[T, Iterable[str]]],
             delimiter: TokenType,
             terminator: TokenType
-    ) -> Result[Sequence[T], Iterable[str]]:
+    ) -> Result[Iterable[T], Iterable[str]]:
         """
         Разделенные элементы, заканчивающиеся токеном
         :param element_parser: Способ парсинга элемента
@@ -57,33 +59,27 @@ class Parser(ABC):
         :return:
         """
         if self.tokens.peek().type == terminator:
-            return Result.ok(())
+            return SingleResult.ok(())
 
-        items = list[T]()
-        errors = list[str]()
+        resulter: ResultAccumulator[T, str] = ResultAccumulator()
 
         while True:
-            result = element_parser()
-
-            if result.isError():
-                errors.extend(result.getError())
-            else:
-                items.append(result.unwrap())
+            resulter.putMulti(element_parser())
 
             token = self.tokens.next()
 
             if token is None:
-                errors.append(f"Ожидался токен")
+                resulter.putError(f"Ожидался токен")
                 break
 
             if token.type == terminator:
                 break
 
             if token.type != delimiter:
-                errors.append(f"Expected '{delimiter}' between arguments")
+                resulter.putError(f"Expected '{delimiter}' between arguments")
                 break
 
-        return Result.chose_LEGACY(not errors, items, errors)
+        return resulter
 
     def braceArguments[T: Node](
             self,
@@ -91,7 +87,7 @@ class Parser(ABC):
             brace_open: TokenType,
             brace_close: TokenType,
             delimiter: TokenType = TokenType.Comma
-    ) -> Result[Sequence[T], Iterable[str]]:
+    ) -> Result[Iterable[T], Iterable[str]]:
         """
         Парсинг аргументов в скобках
         :param element_parser: Парсер элементов
@@ -101,40 +97,39 @@ class Parser(ABC):
         :return: Последовательность узлов согласно функции парсера элементов
         """
 
-        if (begin := self.consume(brace_open)).isError():
-            return Result.error((begin.getError(),))
+        begin_token_is_correct_result = self.consume(brace_open)
+        args_result = self.arguments(element_parser, delimiter, brace_close)
 
-        return self.arguments(element_parser, delimiter, brace_close)
+        after_map: Result[Iterable[T], Iterable[str]] = begin_token_is_correct_result.map(lambda _: (), lambda e: (e,))
+        after_pipe = after_map.pipe(lambda _: args_result)
 
-    def statement(self) -> Result[Optional[Statement], Iterable[str]]:
+        return after_pipe
+
+    def statement(self) -> Optional[Result[Statement, Iterable[str]]]:
         """Парсинг statement"""
         token = self.tokens.peek()
         self.tokens.next()
 
         if token.type == TokenType.StatementEnd:
-            return Result.ok(None)
+            return None
 
-        return Result.error((f"Неуместный токен: {token}",))
+        return SingleResult.error((f"Неуместный токен: {token}",))
 
     def program(self) -> Result[Program, Iterable[str]]:
         """Парсинг программы"""
-        statements = list[Statement]()
-        errors = list[str]()
+        resulter = ResultAccumulator()
 
         while self.tokens.peek() is not None:
             node = self.statement()
 
-            if node.isOk():
-                if (unwrap := node.unwrap()) is not None:
-                    statements.append(unwrap)
+            if node is not None:
+                resulter.putMulti(node)
 
-            else:
-                errors.extend(node.getError())
-
-        return Result.chose_LEGACY(not errors, Program(statements), errors)
+        return resulter.mapSingle(lambda statements: Program(statements))
 
 
 class Parsable[T: Node]:
+    """Способность парсинга узла"""
 
     @classmethod
     @abstractmethod

@@ -7,6 +7,8 @@ from bytelang.abc.lexer import Lexer
 from bytelang.core.tokens import Token
 from bytelang.core.tokens import TokenType
 from rustpy.result import Result
+from rustpy.result import ResultAccumulator
+from rustpy.result import SingleResult
 
 
 class SimpleLexer(Lexer):
@@ -14,19 +16,12 @@ class SimpleLexer(Lexer):
         self._token_regex = TokenType.build_regex()
 
     def run(self, source: TextIO) -> Result[Sequence[Token], Iterable[str]]:
-        tokens = list[Token]()
-        errors = list[str]()
+        resulter = ResultAccumulator()
 
         for result in self._process(source.read()):
-            if result.isOk():
-                tokens.append(result.unwrap())
-            else:
-                errors.append(result.getError())
+            resulter.putSingle(result)
 
-        if len(errors) > 0:
-            return Result.error(errors)
-
-        return Result.ok(tokens)
+        return resulter
 
     def _process(self, source_read: str) -> Iterable[Result[Token, str]]:
         position: int = 0
@@ -35,7 +30,7 @@ class SimpleLexer(Lexer):
             match = re.match(self._token_regex, source_read[position:])
 
             if match is None:
-                yield Result.error(f"Неизвестный символ: '{source_read[position]}' на позиции {position}")
+                yield SingleResult.error(f"Неизвестный символ: '{source_read[position]}' на позиции {position}")
                 position += 1
                 continue
 
@@ -45,7 +40,7 @@ class SimpleLexer(Lexer):
             if t is None:
                 continue
 
-            yield Result.ok(t)
+            yield SingleResult.ok(t)
 
 
 def _test():

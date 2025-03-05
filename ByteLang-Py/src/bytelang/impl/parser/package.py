@@ -2,17 +2,18 @@
 from itertools import chain
 from typing import Iterable
 
-from bytelang.impl.node.common.directive import ParsableDirective
-from bytelang.impl.node.package.directive import InstructionDeclareDirective
+from bytelang.abc.node import Directive
+from bytelang.abc.parser import Parsable
+from bytelang.impl.node.package.directive import InstructionDefineDirective
 from bytelang.impl.parser.common import CommonParser
 
 
 class PackageParser(CommonParser):
 
     @classmethod
-    def getDirectives(cls) -> Iterable[tuple[str, type[ParsableDirective]]]:
+    def getDirectives(cls) -> Iterable[tuple[str, type[Parsable[Directive]]]]:
         return chain(super().getDirectives(), (
-            ("inst", InstructionDeclareDirective),
+            ("inst", InstructionDefineDirective),
         ))
 
 

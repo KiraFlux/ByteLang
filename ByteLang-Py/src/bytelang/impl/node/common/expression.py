@@ -11,7 +11,9 @@ from bytelang.abc.parser import Parsable
 from bytelang.abc.parser import Parser
 from bytelang.core.tokens import Operator
 from bytelang.core.tokens import TokenType
+from rustpy.result import MultipleErrorsResult
 from rustpy.result import Result
+from rustpy.result import SingleResult
 
 
 @dataclass(frozen=True)
@@ -22,9 +24,9 @@ class Identifier(Expression, Parsable[Expression]):
     """Имя"""
 
     @classmethod
-    def parse(cls, parser: Parser) -> Result[Identifier, Iterable[str]]:
+    def parse(cls, parser: Parser) -> Result[Identifier, str]:
         """Парсинг токена в узел Идентификатора"""
-        return parser.consume(TokenType.Identifier).map(lambda ok: cls(ok.value), lambda e: (e,))
+        return parser.consume(TokenType.Identifier).map(lambda ok: cls(ok.value))
 
 
 @dataclass(frozen=True)
@@ -35,14 +37,14 @@ class Literal[T: (int, float, str)](Expression, Parsable[Expression]):
     """Значение"""
 
     @classmethod
-    def parse(cls, parser: Parser) -> Result[Literal, Iterable[str]]:
+    def parse(cls, parser: Parser) -> Result[Literal, str]:
         """Парсинг токена в узел Литерала"""
         token = parser.tokens.next()
 
         if not token.type.isLiteral():
-            return Result.error((f"Ожидался литерал, получено: {token}",))
+            return SingleResult.error(f"Ожидался литерал, получено: {token}")
 
-        return Result.ok(cls(token.value))
+        return SingleResult.ok(cls(token.value))
 
 
 @dataclass(frozen=True)
@@ -61,7 +63,7 @@ class UnaryOp(Expression, Parsable[Expression]):
         token = parser.tokens.next()
 
         if (operator := token.type.asOperator()) is None:
-            return Result.error((f"Ожидался оператор, получено: {token}",))
+            return SingleResult.error((f"Ожидался оператор, получено: {token}",))
 
         return parser.expression().map(lambda expr: cls(operator, expr))
 
@@ -84,14 +86,14 @@ class Macro(Expression, Parsable[Expression]):
 
     id: Identifier
     """Идентификатор макроса"""
-    args: Sequence[Expression]
+    args: Iterable[Expression]
     """Аргументы развертки"""
 
     @classmethod
     def parse(cls, parser: Parser) -> Result[Macro, Iterable[str]]:
-        _id = parser.consume(TokenType.Macro)
+        ret = MultipleErrorsResult()
 
-        if _id.isError():
-            return Result.error(_id.getError())
+        _id = ret.putSingle(parser.consume(TokenType.Macro))
+        args = ret.putMulti(parser.braceArguments(parser.expression, TokenType.OpenRound, TokenType.CloseRound))
 
-        return parser.braceArguments(parser.expression, TokenType.OpenRound, TokenType.CloseRound).map(lambda a: cls(Identifier(_id.unwrap().value), a))
+        return ret.make(lambda: cls(_id.unwrap().value, args.unwrap()))

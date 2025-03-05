@@ -24,7 +24,7 @@ class SourceParser(CommonParser):
             ("mark", MarkDeclareDirective)
         ))
 
-    def statement(self) -> Result[Optional[Statement], Iterable[str]]:
+    def statement(self) -> Optional[Result[Statement, Iterable[str]]]:
         if self.tokens.peek().type == TokenType.Identifier:
             return Instruction.parse(self)
 
