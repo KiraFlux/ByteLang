@@ -50,13 +50,22 @@ class CommonParser(Parser):
 
     def _directive(self) -> Result[Directive, Iterable[str]]:
         """Парсинг директивы"""
+
+        def _f(e):
+            return (e,)
+
         if (identifier := self.consume(TokenType.Directive)).isError():
-            return SingleResult.error(identifier.getError())
+            return identifier.flow(_f)
 
         if (directive := self.directive_registry.get(identifier.unwrap().value)) is None:
             return SingleResult.error((f"Не удалось найти директиву: {identifier}",))
 
-        return directive.parse(self)
+        node = directive.parse(self)
+
+        if (token := self.consume(TokenType.StatementEnd)).isError():
+            return token.flow(_f)
+
+        return node
 
     def statement(self) -> Optional[Result[Statement, Iterable[str]]]:
         if self.tokens.peek().type == TokenType.Directive:
@@ -71,8 +80,9 @@ def _test():
     from io import StringIO
 
     code = """
-    .struct MyStructType { byte: u8, int: i32 }
-    .macro foo(a, b, c) -> 12345
+    .struct MyStructType { byte: u8, int: i32 } 
+    .macro foo(a, b, c) -> 12345 
+    
     .const hola = @foo(1, 2, 3)
     """
 

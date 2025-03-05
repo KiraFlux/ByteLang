@@ -13,6 +13,7 @@ from bytelang.abc.node import Statement
 from bytelang.core.stream import Stream
 from bytelang.core.tokens import Token
 from bytelang.core.tokens import TokenType
+from rustpy.result import MultipleErrorsResult
 from rustpy.result import Result
 from rustpy.result import ResultAccumulator
 from rustpy.result import SingleResult
@@ -34,7 +35,6 @@ class Parser(ABC):
 
     def consume(self, token_type: TokenType) -> Result[Token, str]:
         """Получить ожидаемый токен"""
-
         token = self.tokens.next()
 
         if token is None:
@@ -96,14 +96,10 @@ class Parser(ABC):
         :param delimiter: разделитель элементов
         :return: Последовательность узлов согласно функции парсера элементов
         """
-
-        begin_token_is_correct_result = self.consume(brace_open)
-        args_result = self.arguments(element_parser, delimiter, brace_close)
-
-        after_map: Result[Iterable[T], Iterable[str]] = begin_token_is_correct_result.map(lambda _: (), lambda e: (e,))
-        after_pipe = after_map.pipe(lambda _: args_result)
-
-        return after_pipe
+        ret = MultipleErrorsResult()
+        ret.putSingle(self.consume(brace_open))
+        args = ret.putMulti(self.arguments(element_parser, delimiter, brace_close))
+        return ret.make(lambda: args.unwrap())
 
     def statement(self) -> Optional[Result[Statement, Iterable[str]]]:
         """Парсинг statement"""

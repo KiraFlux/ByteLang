@@ -23,13 +23,9 @@ def _test():
     from rustpy.exceptions import Panic
 
     code = """
-    
     .struct MyStruct { byte: u8, int: i32 }
-    
     .inst MyInstruction(a: u8, context: MyStruct)
-    
     .const MyConst = 12345
-    
     """
 
     try:

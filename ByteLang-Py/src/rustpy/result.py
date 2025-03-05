@@ -42,9 +42,9 @@ class Result[T, E](ABC):
             return make_if_ok(self._getValue())
         return self
 
-    def flow[_T](self) -> Result[_T, E]:
+    def flow[_T, _E](self, err: Callable[[E], _E] = _pass) -> Result[_T, E]:
         """Перенести ошибку под другой тип значения результата"""
-        return SingleResult.error(self.getError())
+        return SingleResult.error(err(self.getError()))
 
     def isError(self) -> bool:
         """Результат является ошибкой"""
