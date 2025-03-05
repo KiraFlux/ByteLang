@@ -6,6 +6,7 @@ from typing import Sequence
 
 from bytelang.abc.node import Expression
 from bytelang.abc.node import Statement
+from bytelang.abc.parser import Parsable
 from bytelang.abc.parser import Parser
 from bytelang.core.tokens import TokenType
 from bytelang.impl.node.common.expression import Identifier
@@ -13,7 +14,7 @@ from rustpy.result import Result
 
 
 @dataclass(frozen=True)
-class Instruction(Statement):
+class Instruction(Statement, Parsable[Statement]):
     """Узел вызова инструкции"""
 
     id: Identifier
@@ -26,14 +27,14 @@ class Instruction(Statement):
         """Парсинг инструкций"""
         errors = list[str]()
 
-        id_result = Identifier.parse(parser.tokens)
+        id_result = Identifier.parse(parser)
 
         if id_result.isError():
-            errors.append(id_result.getError())
+            errors.extend(id_result.getError())
 
         args = parser.arguments(parser.expression, TokenType.Comma, TokenType.StatementEnd)
 
         if args.isError():
             errors.extend(args.getError())
 
-        return Result.error(errors) if errors else Result.ok(Instruction(id_result.unwrap(), args.unwrap()))
+        return Result.chose_LEGACY(len(errors) == 0, Instruction(id_result.unwrap(), args.unwrap()), errors)

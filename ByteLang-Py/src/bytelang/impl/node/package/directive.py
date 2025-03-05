@@ -4,16 +4,16 @@ from typing import Iterable
 from typing import Sequence
 
 from bytelang.abc.node import Directive
+from bytelang.abc.parser import Parsable
 from bytelang.abc.parser import Parser
 from bytelang.core.tokens import TokenType
 from bytelang.impl.node.common.type import Field
 from bytelang.impl.node.common.expression import Identifier
-from bytelang.impl.node.common.directive import ParsableDirective
 from rustpy.result import Result
 
 
 @dataclass(frozen=True)
-class InstructionDeclareDirective(ParsableDirective):
+class InstructionDeclareDirective(Directive, Parsable[Directive]):
     """Объявление инструкции"""
 
     id: Identifier
@@ -25,14 +25,14 @@ class InstructionDeclareDirective(ParsableDirective):
     def parse(cls, parser: Parser) -> Result[Directive, Iterable[str]]:
         errors = list[str]()
 
-        _id = Identifier.parse(parser.tokens)
+        _id = Identifier.parse(parser)
 
         if _id.isError():
             errors.append(_id.getError())
 
-        args = parser.braceArguments(lambda: Field.parse(parser.tokens).map(lambda e: (e,)), TokenType.OpenRound, TokenType.CloseRound)
+        args = parser.braceArguments(lambda: Field.parse(parser), TokenType.OpenRound, TokenType.CloseRound)
 
         if args.isError():
             errors.extend(args.getError())
 
-        return Result.error(errors) if errors else Result.ok(cls(_id.unwrap(), args.unwrap()))
+        return Result.chose_LEGACY(len(errors) == 0, cls(_id.unwrap(), args.unwrap()), errors)

@@ -8,8 +8,6 @@ from bytelang.abc.node import Expression
 from bytelang.abc.node import Node
 from bytelang.abc.parser import Parsable
 from bytelang.abc.parser import Parser
-from bytelang.core.stream import Stream
-from bytelang.core.tokens import Token
 from bytelang.core.tokens import TokenType
 from bytelang.impl.node.common.expression import Identifier
 from rustpy.result import Result
@@ -29,12 +27,7 @@ class PureType(Type, Parsable[Type]):
     @classmethod
     def parse(cls, parser: Parser) -> Result[Type, Iterable[str]]:
         """Создать чистый тип на основе идентификатора"""
-        type_id = Identifier.parse(parser)
-
-        if type_id.isError():
-            return Result.error(type_id.getError())
-
-        return Result.ok(cls(type_id.unwrap()))
+        return Identifier.parse(parser).map(lambda ok: cls(ok))
 
 
 @dataclass(frozen=True)
@@ -77,7 +70,4 @@ class Field(Node, Parsable[Node]):
         if (token := parser.consume(TokenType.Colon)).isError():
             return Result.error(token.getError())
 
-        if (_type := PureType.parse(parser)).isError():
-            return Result.error(_type.getError())
-
-        return Result.ok(cls(name.unwrap(), _type.unwrap()))
+        return PureType.parse(parser).map(lambda t: cls(name.unwrap(), t))

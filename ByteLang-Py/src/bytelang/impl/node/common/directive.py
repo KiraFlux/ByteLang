@@ -6,7 +6,6 @@ from typing import Sequence
 
 from bytelang.abc.node import Directive
 from bytelang.abc.node import Expression
-from bytelang.abc.node import Node
 from bytelang.abc.parser import Parsable
 from bytelang.abc.parser import Parser
 from bytelang.core.tokens import TokenType
@@ -34,12 +33,7 @@ class ConstDeclareDirective(Directive, Parsable[Directive]):
         if (r := parser.consume(TokenType.Assignment)).isError():
             return Result.error(r.getError())
 
-        result = parser.expression()
-
-        if result.isError():
-            return Result.error(result.getError())
-
-        return Result.ok(cls(_id.unwrap(), result.unwrap()))
+        return parser.expression().map(lambda expr: cls(_id.unwrap(), expr))
 
 
 @dataclass(frozen=True)
@@ -58,12 +52,7 @@ class StructDeclareDirective(Directive, Parsable[Directive]):
         if _id.isError():
             return Result.error(_id.getError())
 
-        fields = parser.braceArguments(lambda: Field.parse(parser), TokenType.OpenFigure, TokenType.CloseFigure)
-
-        if fields.isError():
-            return Result.error(fields.getError())
-
-        return Result.ok(cls(_id.unwrap(), fields.unwrap()))
+        return parser.braceArguments(lambda: Field.parse(parser), TokenType.OpenFigure, TokenType.CloseFigure).map(lambda f: cls(_id.unwrap(), f))
 
 
 @dataclass(frozen=True)
@@ -92,9 +81,4 @@ class MacroDeclareDirective(Directive, Parsable[Directive]):
         if (r := parser.consume(TokenType.Arrow)).isError():
             return Result.error((r.getError(),))
 
-        expr = parser.expression()
-
-        if expr.isError():
-            return Result.error(expr.getError())
-
-        return Result.ok(cls(_id.unwrap(), args.unwrap(), expr.unwrap()))
+        return parser.expression().map(lambda expr: cls(_id.unwrap(), args.unwrap(), expr))

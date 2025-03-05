@@ -24,12 +24,7 @@ class Identifier(Expression, Parsable[Expression]):
     @classmethod
     def parse(cls, parser: Parser) -> Result[Identifier, Iterable[str]]:
         """Парсинг токена в узел Идентификатора"""
-        token = parser.consume(TokenType.Identifier)
-
-        if token.isOk():
-            return Result.ok(cls(token.unwrap().value))
-
-        return Result.error((token.getError(),))
+        return parser.consume(TokenType.Identifier).map(lambda ok: cls(ok.value), lambda e: (e,))
 
 
 @dataclass(frozen=True)
@@ -68,12 +63,7 @@ class UnaryOp(Expression, Parsable[Expression]):
         if (operator := token.type.asOperator()) is None:
             return Result.error((f"Ожидался оператор, получено: {token}",))
 
-        result = parser.expression()
-
-        if result.isError():
-            return Result.error(result.getError())
-
-        return Result.ok(cls(operator, result.unwrap()))
+        return parser.expression().map(lambda expr: cls(operator, expr))
 
 
 @dataclass(frozen=True)
@@ -104,9 +94,4 @@ class Macro(Expression, Parsable[Expression]):
         if _id.isError():
             return Result.error(_id.getError())
 
-        args = parser.braceArguments(parser.expression, TokenType.OpenRound, TokenType.CloseRound)
-
-        if args.isError():
-            return Result.error(args.getError())
-
-        return Result.ok(cls(Identifier(_id.unwrap().value), args.unwrap()))
+        return parser.braceArguments(parser.expression, TokenType.OpenRound, TokenType.CloseRound).map(lambda a: cls(Identifier(_id.unwrap().value), a))

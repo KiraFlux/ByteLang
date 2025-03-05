@@ -17,6 +17,10 @@ class Result[T, E]:
     _value: Optional[T]
     _error: Optional[E]
 
+    @staticmethod
+    def _pass[T](v: T):
+        return v
+
     @classmethod
     def error(cls, error: E) -> Output:
         """Создать результат-ошибку"""
@@ -28,13 +32,17 @@ class Result[T, E]:
         return cls(_is_ok=True, _value=value, _error=None)
 
     @classmethod
-    def chose(cls, make_ok: bool, value: T, error: E) -> Output:
+    def chose_LEGACY(cls, make_ok: bool, value: T, error: E) -> Output:
         """Выбор результата на основе входного значения"""
         return cls.ok(value) if make_ok else cls.error(error)
 
-    def map[OtherErr](self, error_transformer: Callable[[E], OtherErr]) -> Output:
+    def map_LEGACY[OtherErr](self, error_transformer: Callable[[E], OtherErr]) -> Output:
         """Преобразовать результат с ошибкой данного типа в результат ошибки этого типа"""
         return self if self.isOk() else self.error(error_transformer(self.getError()))
+
+    def map[_T, _E](self, ok: Callable[[T], _T] = _pass, err: Callable[[E], _E] = _pass) -> Result[_T, _E]:
+        """Преобразовать результат"""
+        return self.ok(ok(self.unwrap())) if self.isOk() else self.error(err(self.getError()))
 
     def isOk(self) -> bool:
         """Результат является значением"""

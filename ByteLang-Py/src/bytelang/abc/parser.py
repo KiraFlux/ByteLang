@@ -83,7 +83,7 @@ class Parser(ABC):
                 errors.append(f"Expected '{delimiter}' between arguments")
                 break
 
-        return Result.chose(not errors, items, errors)
+        return Result.chose_LEGACY(not errors, items, errors)
 
     def braceArguments[T: Node](
             self,
@@ -131,7 +131,7 @@ class Parser(ABC):
             else:
                 errors.extend(node.getError())
 
-        return Result.chose(not errors, Program(statements), errors)
+        return Result.chose_LEGACY(not errors, Program(statements), errors)
 
 
 class Parsable[T: Node]:

@@ -5,14 +5,14 @@ from dataclasses import dataclass
 from typing import Iterable
 
 from bytelang.abc.node import Directive
+from bytelang.abc.parser import Parsable
 from bytelang.abc.parser import Parser
 from bytelang.impl.node.common.expression import Identifier
-from bytelang.impl.node.common.directive import ParsableDirective
 from rustpy.result import Result
 
 
 @dataclass(frozen=True)
-class EnvSelectDirective(ParsableDirective):
+class EnvSelectDirective(Directive, Parsable[Directive]):
     """Директива выбора окружения"""
 
     env: Identifier
@@ -20,25 +20,16 @@ class EnvSelectDirective(ParsableDirective):
 
     @classmethod
     def parse(cls, parser: Parser) -> Result[Directive, Iterable[str]]:
-        env = Identifier.parse(parser.tokens)
-
-        if env.isError():
-            return Result.error((env.getError(),))
-
-        return Result.ok(cls(env.unwrap()))
+        return Identifier.parse(parser).map(lambda ok: cls(ok))
 
 
 @dataclass(frozen=True)
-class MarkDeclareDirective(ParsableDirective):
+class MarkDeclareDirective(Directive, Parsable[Directive]):
     """Директива объявления метки"""
+
     mark: Identifier
     """Имя метки"""
 
     @classmethod
     def parse(cls, parser: Parser) -> Result[Directive, Iterable[str]]:
-        mark = Identifier.parse(parser.tokens)
-
-        if mark.isError():
-            return Result.error((mark.getError(),))
-
-        return Result.ok(cls(mark.unwrap()))
+        return Identifier.parse(parser).map(lambda ok: cls(ok))
