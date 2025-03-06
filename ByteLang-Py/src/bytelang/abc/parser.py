@@ -4,7 +4,6 @@ from abc import abstractmethod
 from typing import Callable
 from typing import Iterable
 from typing import Optional
-from typing import Sequence
 
 from bytelang.abc.node import Expression
 from bytelang.abc.node import Node
@@ -24,9 +23,9 @@ class Parser(ABC):
 
     tokens: Stream[Token]
 
-    def run(self, tokens: Sequence[Token]) -> Result[Program, Iterable[str]]:
+    def run(self, tokens: Iterable[Token]) -> Result[Program, Iterable[str]]:
         """Создать AST"""
-        self.tokens = Stream(tokens)
+        self.tokens = Stream(tuple(tokens))
         return self.program()
 
     @abstractmethod

@@ -4,7 +4,7 @@ from typing import Iterable
 
 from bytelang.abc.node import Directive
 from bytelang.abc.parser import Parsable
-from bytelang.impl.node.package.directive import InstructionDefineDirective
+from bytelang.impl.node.directive import InstructionDefineDirective
 from bytelang.impl.parser.common import CommonParser
 
 

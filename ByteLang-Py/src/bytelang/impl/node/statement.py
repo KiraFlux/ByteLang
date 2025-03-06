@@ -10,7 +10,7 @@ from bytelang.abc.node import Statement
 from bytelang.abc.parser import Parsable
 from bytelang.abc.parser import Parser
 from bytelang.core.tokens import TokenType
-from bytelang.impl.node.common.expression import Identifier
+from bytelang.impl.node.expression import Identifier
 from rustpy.result import MultipleErrorsResult
 from rustpy.result import Result
 

@@ -75,7 +75,7 @@ u64 = Primitive[int](_Format.U64)
 
 i8 = Primitive[int](_Format.I8)
 i16 = Primitive[int](_Format.I16)
-i32: Primitive[int] = Primitive[int](_Format.I32)
+i32 = Primitive[int](_Format.I32)
 i64 = Primitive[int](_Format.I64)
 
 f32 = Primitive[float](_Format.F32)

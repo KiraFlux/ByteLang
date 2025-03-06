@@ -7,9 +7,9 @@ from bytelang.abc.node import Directive
 from bytelang.abc.node import Statement
 from bytelang.abc.parser import Parsable
 from bytelang.core.tokens import TokenType
-from bytelang.impl.node.source.directive import EnvSelectDirective
-from bytelang.impl.node.source.directive import MarkDeclareDirective
-from bytelang.impl.node.source.statement import Instruction
+from bytelang.impl.node.directive import EnvSelectDirective
+from bytelang.impl.node.directive import MarkDefineDirective
+from bytelang.impl.node.statement import Instruction
 from bytelang.impl.parser.common import CommonParser
 from rustpy.result import Result
 
@@ -21,7 +21,7 @@ class SourceParser(CommonParser):
     def getDirectives(cls) -> Iterable[tuple[str, type[Parsable[Directive]]]]:
         return chain(super().getDirectives(), (
             ("env", EnvSelectDirective),
-            ("mark", MarkDeclareDirective)
+            ("mark", MarkDefineDirective)
         ))
 
     def statement(self) -> Optional[Result[Statement, Iterable[str]]]:

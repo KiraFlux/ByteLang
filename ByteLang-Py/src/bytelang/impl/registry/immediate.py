@@ -1,13 +1,11 @@
 """Реализация реестра мгновенной загрузки"""
 from abc import abstractmethod
 from pathlib import Path
-from pathlib import Path
-
-from typing import Iterable
 from typing import Iterable
 from typing import Optional
 
 from bytelang.abc.registry import Registry
+from bytelang.abc.registry import RuntimeRegistry
 
 
 class ImmediateRegistry[Key, Item](Registry[Key, Item]):
@@ -30,3 +28,7 @@ class FileRegistry[Item, RawItem](ImmediateRegistry[str, Item]):
     @abstractmethod
     def _parseFile(self, path: Path) -> Iterable[tuple[str, Item]]:
         """Преобразовать содержимое файла в последовательность пар ключ - предмет"""
+
+
+class RuntimeImmediateRegistry[Key, Item](RuntimeRegistry[Key, Item], ImmediateRegistry[Key, Item]):
+    """Реестр мгновенной загрузки, изменяемый"""

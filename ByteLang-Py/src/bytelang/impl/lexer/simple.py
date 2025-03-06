@@ -15,7 +15,7 @@ class SimpleLexer(Lexer):
     def __init__(self):
         self._token_regex = TokenType.build_regex()
 
-    def run(self, source: TextIO) -> Result[Sequence[Token], Iterable[str]]:
+    def run(self, source: TextIO) -> Result[Iterable[Token], Iterable[str]]:
         resulter = ResultAccumulator()
 
         for result in self._process(source.read()):
