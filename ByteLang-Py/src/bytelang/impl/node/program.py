@@ -8,6 +8,7 @@ from bytelang.abc.parser import Parser
 from bytelang.abc.semantic import SemanticContext
 from bytelang.impl.node.statement import Statement
 from bytelang.impl.node.super import SuperNode
+from rustpy.result import MultipleErrorsResult
 from rustpy.result import Result
 from rustpy.result import ResultAccumulator
 
@@ -18,6 +19,14 @@ class Program[S: SemanticContext](SuperNode[S, None, "Program"]):
 
     statements: Sequence[Statement]
     """Statements"""
+
+    def accept(self, context: S) -> Result[None, Iterable[str]]:
+        ret = MultipleErrorsResult()
+
+        for statement in self.statements:
+            ret.putMulti(statement.accept(context))
+
+        return ret.make(lambda: None)
 
     @classmethod
     def parse(cls, parser: Parser) -> Result[Program, Iterable[str]]:

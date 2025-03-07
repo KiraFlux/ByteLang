@@ -60,14 +60,14 @@ class Parser[Stmt: Node](ABC):
             token = self.tokens.next()
 
             if token is None:
-                resulter.putError(f"Ожидался токен")
+                resulter.putOptionalError(f"Ожидался токен")
                 break
 
             if token.type == terminator:
                 break
 
             if token.type != delimiter:
-                resulter.putError(f"Expected '{delimiter}' between arguments")
+                resulter.putOptionalError(f"Expected '{delimiter}' between arguments")
                 break
 
         return resulter

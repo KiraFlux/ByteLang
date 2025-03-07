@@ -1,9 +1,8 @@
 import re
+from dataclasses import dataclass
 from typing import Iterable
-from typing import Sequence
 from typing import TextIO
 
-from bytelang.abc.lexer import Lexer
 from bytelang.core.tokens import Token
 from bytelang.core.tokens import TokenType
 from rustpy.result import Result
@@ -11,11 +10,18 @@ from rustpy.result import ResultAccumulator
 from rustpy.result import SingleResult
 
 
-class SimpleLexer(Lexer):
-    def __init__(self):
-        self._token_regex = TokenType.build_regex()
+@dataclass(frozen=True)
+class Lexer:
+    """Лексический анализатор - разбивает исходный код на токены"""
+
+    _token_regex: str
 
     def run(self, source: TextIO) -> Result[Iterable[Token], Iterable[str]]:
+        """
+        Преобразовать исходный код в токены
+        :param source: исходный код.
+        :return Последовательность токенов
+        """
         resulter = ResultAccumulator()
 
         for result in self._process(source.read()):
@@ -50,7 +56,7 @@ def _test():
 
     print("begin")
 
-    lexer = SimpleLexer()
+    lexer = Lexer(TokenType.build_regex())
     result = lexer.run(StringIO(code_ok))
 
     if result.isError():

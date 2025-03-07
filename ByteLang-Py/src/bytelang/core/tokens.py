@@ -7,6 +7,10 @@ from enum import auto
 from typing import Callable
 from typing import Optional
 
+from bytelang.core.rvalue import FloatRV
+from bytelang.core.rvalue import IntegerRV
+from bytelang.core.rvalue import RValueSpec
+
 type _Value = str | int | float | None
 
 
@@ -59,6 +63,11 @@ class _Spec[T: _Value]:
         """Пропуск"""
         return cls(_Kind.Skip, c)
 
+    @classmethod
+    def identifier(cls) -> _Spec[str]:
+        """Идентификатор"""
+        return cls(_Kind.Common, r'[a-zA-Z_]\w*')
+
 
 @dataclass(frozen=True)
 class _LexemeTransformer[T: _Value](_Spec):
@@ -71,11 +80,6 @@ class _LexemeTransformer[T: _Value](_Spec):
         return self.transformer(lexeme)
 
     @classmethod
-    def literal[T: _Value](cls, p: str, t: Callable[[str], T]) -> _Spec[T]:
-        """Вид токена - литерал"""
-        return cls(_Kind.Literal, p, t)
-
-    @classmethod
     def directive(cls) -> _Spec[str]:
         """Директива"""
         return cls(_Kind.Common, r'\.[a-zA-Z_]\w*', lambda s: s.lstrip('.'))
@@ -84,6 +88,17 @@ class _LexemeTransformer[T: _Value](_Spec):
     def macro(cls) -> _Spec[str]:
         """Директива"""
         return cls(_Kind.Common, r'\@[a-zA-Z_]\w*', lambda s: s.lstrip('@'))
+
+
+@dataclass(frozen=True)
+class _LiteralSpec[T: (int, float, str)](_LexemeTransformer[T]):
+    rvalue_maker: Callable[[T], RValueSpec]
+    """Преобразователь токена в rvalue"""
+
+    @classmethod
+    def new(cls, pattern: str, transformer: Callable[[str], T], rv_maker: Callable[[T], RValueSpec]) -> _LiteralSpec[T]:
+        """Создать вид литерала"""
+        return cls(_Kind.Literal, pattern, transformer, rv_maker)
 
 
 @dataclass(frozen=True)
@@ -103,22 +118,21 @@ class TokenType(Enum):
 
     Directive = _LexemeTransformer.directive()
     """Вызов директивы"""
-
     Macro = _LexemeTransformer.macro()
     """Вызов макроса"""
+    Identifier = _Spec.identifier()
+    """Идентификатор (переменная, инструкция, константа, метка и т.п.)"""
 
     # Литералы
 
-    String = _LexemeTransformer.literal(r'"([^"]*)"', lambda s: s.strip('"'))
+    String = _LiteralSpec.new(r'"([^"]*)"', lambda s: s.strip('"'), NotImplemented)
     """Строковый литерал"""
-    Character = _LexemeTransformer.literal(r"'.'", lambda c: ord(c.strip("'")))
+    Character = _LiteralSpec.new(r"'.'", lambda c: ord(c.strip("'")), IntegerRV.new)
     """Символьный литерал"""
-    Float = _LexemeTransformer.literal(r'\d+\.\d+', float)
+    Float = _LiteralSpec.new(r'\d+\.\d+', float, FloatRV.new)
     """Вещественный литерал"""
-    Integer = _LexemeTransformer.literal(r'\d+', int)
+    Integer = _LiteralSpec.new(r'\d+', int, IntegerRV.new)
     """Целочисленный литерал"""
-    Identifier = _LexemeTransformer.literal(r'[a-zA-Z_]\w*', lambda i: i)
-    """Идентификатор (переменная, инструкция, константа, метка и т.п.)"""
 
     # Разделители
 
@@ -186,7 +200,7 @@ class TokenType(Enum):
         return self.value.kind == e
 
     def isLiteral(self) -> bool:
-        """Токен является оператором"""
+        """Токен является литералом"""
         return self._is(_Kind.Literal)
 
     def asOperator(self) -> Optional[Operator]:
@@ -194,7 +208,10 @@ class TokenType(Enum):
         if isinstance(self.value, _SpecOp):
             return self.value.op
 
-        return None
+    def getRightValueMaker[T](self) -> Optional[Callable[[Token[T]], RValueSpec]]:
+        """Получить преобразователь из литерала в RV"""
+        if isinstance(self, _LiteralSpec):
+            return self.rvalue_maker
 
     @classmethod
     def build_regex(cls) -> str:

@@ -7,7 +7,7 @@ from typing import BinaryIO
 from typing import Iterable
 from typing import TextIO
 
-from bytelang.abc.lexer import Lexer
+from bytelang.core.lexer import Lexer
 from bytelang.abc.parser import Parser
 from rustpy.result import Result
 

@@ -16,7 +16,7 @@ from rustpy.result import Result
 
 
 @dataclass(frozen=True)
-class Instruction(Statement[PackageSemanticContext]):
+class InstructionCall(Statement[PackageSemanticContext]):
     """Узел вызова инструкции"""
 
     id: Identifier
@@ -25,7 +25,7 @@ class Instruction(Statement[PackageSemanticContext]):
     """Аргументы"""
 
     @classmethod
-    def parse(cls, parser: Parser) -> Result[Instruction, Iterable[str]]:
+    def parse(cls, parser: Parser) -> Result[InstructionCall, Iterable[str]]:
         """Парсинг инструкций"""
         ret = MultipleErrorsResult()
 

@@ -4,13 +4,14 @@ from typing import Optional
 
 from bytelang.abc.parser import Parsable
 from bytelang.abc.parser import Parser
+from bytelang.core.lexer import Lexer
 from bytelang.core.stream import Stream
 from bytelang.core.tokens import Token
 from bytelang.core.tokens import TokenType
-from bytelang.impl.node.directive import ConstDefineDirective
+from bytelang.impl.node.directive import ConstDefine
 from bytelang.impl.node.directive import Directive
-from bytelang.impl.node.directive import MacroDefineDirective
-from bytelang.impl.node.directive import StructDefineDirective
+from bytelang.impl.node.directive import MacroDefine
+from bytelang.impl.node.directive import StructDefine
 from bytelang.impl.node.statement import Statement
 from bytelang.impl.registry.immediate import ImmediateRegistry
 from rustpy.result import Result
@@ -24,9 +25,9 @@ class CommonParser(Parser[Statement]):
     def getDirectives(cls) -> Iterable[tuple[str, type[Parsable[Directive]]]]:
         """Получить директивы"""
         return (
-            ("const", ConstDefineDirective),
-            ("struct", StructDefineDirective),
-            ("macro", MacroDefineDirective)
+            ("const", ConstDefine),
+            ("struct", StructDefine),
+            ("macro", MacroDefine)
         )
 
     def __init__(self, stream: Stream[Token]) -> None:
@@ -61,7 +62,6 @@ class CommonParser(Parser[Statement]):
 
 def _test():
     from io import StringIO
-    from bytelang.impl.lexer.simple import SimpleLexer
     from bytelang.impl.node.program import Program
     from bytelang.core.stream import Stream
     from rustpy.exceptions import Panic
@@ -74,7 +74,7 @@ def _test():
     """
 
     try:
-        tokens = SimpleLexer().run(StringIO(code)).unwrap()
+        tokens = Lexer(TokenType.build_regex()).run(StringIO(code)).unwrap()
         print(tokens)
         print(Program.parse(CommonParser(Stream(tuple(tokens)))).unwrap())
 

@@ -115,12 +115,13 @@ class MultipleErrorsResult[T, E](Result[T, Iterable[E]]):
     def putSingle(self, result: Result[T, E]) -> Result[T, E]:
         """Вернуть результат или поместить ошибку"""
         if result.isError():
-            self.putError(result.getError())
+            self.putOptionalError(result.getError())
 
         return result
 
-    def putError(self, error: E) -> None:
-        self._errors.append(error)
+    def putOptionalError(self, error: Optional[E]) -> None:
+        if error is not None:
+            self._errors.append(error)
 
     def putMulti(self, result: Result[T, Iterable[E]]) -> Result[T, Iterable[E]]:
         """Поместить результат, содержащий множественные ошибки"""
@@ -158,7 +159,7 @@ class ResultAccumulator[T, E](Result[Iterable[T], Iterable[E]]):
         if result.isOk():
             self._putOk(result.unwrap())
         else:
-            self.putError(result.getError())
+            self.putOptionalError(result.getError())
 
     def putMulti(self, result: Result[T, Iterable[E]]) -> None:
         """Поместить результат, содержащий множественные ошибки"""
@@ -170,9 +171,10 @@ class ResultAccumulator[T, E](Result[Iterable[T], Iterable[E]]):
     def _putOk(self, value: T) -> None:
         self._results.append(value)
 
-    def putError(self, error: E) -> None:
+    def putOptionalError(self, error: Optional[E]) -> None:
         """Положить ошибку"""
-        self._errors.append(error)
+        if error is not None:
+            self._errors.append(error)
 
     def isOk(self) -> bool:
         return len(self._errors) == 0
