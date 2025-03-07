@@ -1,14 +1,12 @@
 """Парсер"""
 from abc import ABC
 from abc import abstractmethod
+from dataclasses import dataclass
 from typing import Callable
 from typing import Iterable
 from typing import Optional
 
-from bytelang.abc.node import Expression
 from bytelang.abc.node import Node
-from bytelang.abc.node import Program
-from bytelang.abc.node import Statement
 from bytelang.core.stream import Stream
 from bytelang.core.tokens import Token
 from bytelang.core.tokens import TokenType
@@ -18,22 +16,15 @@ from rustpy.result import ResultAccumulator
 from rustpy.result import SingleResult
 
 
-class Parser(ABC):
+@dataclass
+class Parser[Stmt: Node](ABC):
     """Парсер - создаёт AST"""
 
     tokens: Stream[Token]
 
-    def run(self, tokens: Iterable[Token]) -> Result[Program, Iterable[str]]:
-        """Создать AST"""
-        self.tokens = Stream(tuple(tokens))
-        return self.program()
-
-    @abstractmethod
-    def expression(self) -> Result[Expression, Iterable[str]]:
-        """Парсинг выражения"""
-
     def consume(self, token_type: TokenType) -> Result[Token, str]:
         """Получить ожидаемый токен"""
+
         token = self.tokens.next()
 
         if token is None:
@@ -57,6 +48,7 @@ class Parser(ABC):
         :param terminator: Токен окончания последовательности элементов
         :return:
         """
+
         if self.tokens.peek().type == terminator:
             return SingleResult.ok(())
 
@@ -95,32 +87,24 @@ class Parser(ABC):
         :param delimiter: разделитель элементов
         :return: Последовательность узлов согласно функции парсера элементов
         """
+
         ret = MultipleErrorsResult()
+
         ret.putSingle(self.consume(brace_open))
         args = ret.putMulti(self.arguments(element_parser, delimiter, brace_close))
+
         return ret.make(lambda: args.unwrap())
 
-    def statement(self) -> Optional[Result[Statement, Iterable[str]]]:
+    def statement(self) -> Result[Optional[Stmt], Iterable[str]]:
         """Парсинг statement"""
+
         token = self.tokens.peek()
         self.tokens.next()
 
         if token.type == TokenType.StatementEnd:
-            return None
+            return SingleResult.ok(None)
 
         return SingleResult.error((f"Неуместный токен: {token}",))
-
-    def program(self) -> Result[Program, Iterable[str]]:
-        """Парсинг программы"""
-        resulter = ResultAccumulator()
-
-        while self.tokens.peek() is not None:
-            node = self.statement()
-
-            if node is not None:
-                resulter.putMulti(node)
-
-        return resulter.mapSingle(lambda statements: Program(statements))
 
 
 class Parsable[T: Node]:

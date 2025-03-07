@@ -2,28 +2,23 @@ from typing import Final
 from typing import Iterable
 from typing import Optional
 
-from bytelang.abc.node import Directive
-from bytelang.abc.node import Expression
-from bytelang.abc.node import Statement
 from bytelang.abc.parser import Parsable
 from bytelang.abc.parser import Parser
+from bytelang.core.stream import Stream
+from bytelang.core.tokens import Token
 from bytelang.core.tokens import TokenType
 from bytelang.impl.node.directive import ConstDefineDirective
+from bytelang.impl.node.directive import Directive
 from bytelang.impl.node.directive import MacroDefineDirective
 from bytelang.impl.node.directive import StructDefineDirective
-from bytelang.impl.node.expression import Identifier
-from bytelang.impl.node.expression import Literal
-from bytelang.impl.node.expression import Macro
+from bytelang.impl.node.statement import Statement
 from bytelang.impl.registry.immediate import ImmediateRegistry
 from rustpy.result import Result
 from rustpy.result import SingleResult
 
 
-class CommonParser(Parser):
+class CommonParser(Parser[Statement]):
     """Общий парсер"""
-
-    def __init__(self) -> None:
-        self.directive_registry: Final[ImmediateRegistry[str, type[Parsable[Directive]]]] = ImmediateRegistry(self.getDirectives())
 
     @classmethod
     def getDirectives(cls) -> Iterable[tuple[str, type[Parsable[Directive]]]]:
@@ -34,19 +29,9 @@ class CommonParser(Parser):
             ("macro", MacroDefineDirective)
         )
 
-    def expression(self) -> Result[Expression, Iterable[str]]:
-        match self.tokens.peek().type:
-            case TokenType.Identifier:
-                return Identifier.parse(self)
-
-            case TokenType.Macro:
-                return Macro.parse(self)
-
-            case literal_token if literal_token.isLiteral():
-                return Literal.parse(self)
-
-            case not_expression_token:
-                return SingleResult.error((f"Token not an expression: {not_expression_token}",))
+    def __init__(self, stream: Stream[Token]) -> None:
+        super().__init__(stream)
+        self.directive_registry: Final[ImmediateRegistry[str, type[Parsable[Directive]]]] = ImmediateRegistry(self.getDirectives())
 
     def _directive(self) -> Result[Directive, Iterable[str]]:
         """Парсинг директивы"""
@@ -67,7 +52,7 @@ class CommonParser(Parser):
 
         return node
 
-    def statement(self) -> Optional[Result[Statement, Iterable[str]]]:
+    def statement(self) -> Result[Optional[Statement], Iterable[str]]:
         if self.tokens.peek().type == TokenType.Directive:
             return self._directive()
 
@@ -75,9 +60,11 @@ class CommonParser(Parser):
 
 
 def _test():
-    from bytelang.impl.lexer.simple import SimpleLexer
-    from rustpy.exceptions import Panic
     from io import StringIO
+    from bytelang.impl.lexer.simple import SimpleLexer
+    from bytelang.impl.node.program import Program
+    from bytelang.core.stream import Stream
+    from rustpy.exceptions import Panic
 
     code = """
     .struct MyStructType { byte: u8, int: i32 } 
@@ -89,7 +76,7 @@ def _test():
     try:
         tokens = SimpleLexer().run(StringIO(code)).unwrap()
         print(tokens)
-        print(CommonParser().run(tokens).unwrap())
+        print(Program.parse(CommonParser(Stream(tuple(tokens)))).unwrap())
 
     except Panic as e:
         print(e)

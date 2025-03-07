@@ -2,53 +2,77 @@
 
 from __future__ import annotations
 
+from abc import ABC
 from dataclasses import dataclass
 from typing import Iterable
-from typing import Sequence
 
-from bytelang.abc.node import Expression
-from bytelang.abc.parser import Parsable
 from bytelang.abc.parser import Parser
+from bytelang.abc.semantic import SemanticContext
 from bytelang.core.tokens import Operator
 from bytelang.core.tokens import TokenType
+from bytelang.impl.node.super import SuperNode
 from rustpy.result import MultipleErrorsResult
 from rustpy.result import Result
 from rustpy.result import SingleResult
 
 
+class Expression[S: SemanticContext](SuperNode[S, "Expression", "Expression"], ABC):
+    """Выражение"""
+
+    @classmethod
+    def parse(cls, parser: Parser) -> Result[Expression, Iterable[str]]:
+        match parser.tokens.peek().type:
+            case TokenType.Identifier:
+                return Identifier.parse(parser)
+
+            case TokenType.Macro:
+                return Macro.parse(parser)
+
+            case literal_token if literal_token.isLiteral():
+                return Literal.parse(parser)
+
+            case not_expression_token:
+                return SingleResult.error((f"Token not an expression: {not_expression_token}",))
+
+
 @dataclass(frozen=True)
-class Identifier(Expression, Parsable[Expression]):
+class Identifier(Expression):
     """Узел Идентификатора"""
 
     id: str
     """Имя"""
 
     @classmethod
-    def parse(cls, parser: Parser) -> Result[Identifier, str]:
+    def parse(cls, parser: Parser) -> Result[Identifier, Iterable[str]]:
         """Парсинг токена в узел Идентификатора"""
-        return parser.consume(TokenType.Identifier).map(lambda ok: cls(ok.value))
+        return parser.consume(TokenType.Identifier).map(lambda ok: cls(ok.value), lambda e: (e,))
 
 
 @dataclass(frozen=True)
-class Literal[T: (int, float, str)](Expression, Parsable[Expression]):
+class Literal[T: (int, float, str)](Expression):
     """Узел Литерала"""
 
     value: T
     """Значение"""
 
+    def accept(self, semantizer: T) -> Result[Expression, Iterable[str]]:
+        return SingleResult.ok(self)
+
     @classmethod
-    def parse(cls, parser: Parser) -> Result[Literal, str]:
+    def parse(cls, parser: Parser) -> Result[Literal, Iterable[str]]:
         """Парсинг токена в узел Литерала"""
+        ret = MultipleErrorsResult()
+
         token = parser.tokens.next()
 
         if not token.type.isLiteral():
-            return SingleResult.error(f"Ожидался литерал, получено: {token}")
+            ret.putError(f"Ожидался литерал, получено: {token}")
 
-        return SingleResult.ok(cls(token.value))
+        return ret.make(lambda: cls(token.value))
 
 
 @dataclass(frozen=True)
-class UnaryOp(Expression, Parsable[Expression]):
+class UnaryOp(Expression):
     """Узел Префиксной Унарной операции"""
 
     op: Operator
@@ -58,14 +82,12 @@ class UnaryOp(Expression, Parsable[Expression]):
 
     @classmethod
     def parse(cls, parser: Parser) -> Result[UnaryOp, Iterable[str]]:
-        """Создать узел Префиксной Унарной операции"""
-
         token = parser.tokens.next()
 
         if (operator := token.type.asOperator()) is None:
             return SingleResult.error((f"Ожидался оператор, получено: {token}",))
 
-        return parser.expression().map(lambda expr: cls(operator, expr))
+        return Expression.parse(parser).map(lambda expr: cls(operator, expr))
 
 
 @dataclass(frozen=True)
@@ -81,7 +103,7 @@ class BinaryOp(Expression):
 
 
 @dataclass(frozen=True)
-class Macro(Expression, Parsable[Expression]):
+class Macro(Expression):
     """Узел развёртки макроса"""
 
     id: Identifier
@@ -94,6 +116,6 @@ class Macro(Expression, Parsable[Expression]):
         ret = MultipleErrorsResult()
 
         _id = ret.putSingle(parser.consume(TokenType.Macro))
-        args = ret.putMulti(parser.braceArguments(parser.expression, TokenType.OpenRound, TokenType.CloseRound))
+        args = ret.putMulti(parser.braceArguments(lambda: Expression.parse(parser), TokenType.OpenRound, TokenType.CloseRound))
 
         return ret.make(lambda: cls(_id.unwrap().value, args.unwrap()))

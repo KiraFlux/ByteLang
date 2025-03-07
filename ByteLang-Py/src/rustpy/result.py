@@ -85,6 +85,11 @@ class SingleResult[T, E](Result[T, E]):
         """Создать результат-ошибку"""
         return cls(_is_ok=True, _value=value, _error=None)
 
+    @classmethod
+    def fromOptional(cls, value: Optional[T], err_maker: Callable[[], E], ok_maker: Callable[[T], T] = _pass) -> Output:
+        """Создать результат на основе Optional"""
+        return cls.error(err_maker()) if value is None else cls.ok(ok_maker(value))
+
     def isOk(self) -> bool:
         return self._is_ok
 
@@ -110,9 +115,12 @@ class MultipleErrorsResult[T, E](Result[T, Iterable[E]]):
     def putSingle(self, result: Result[T, E]) -> Result[T, E]:
         """Вернуть результат или поместить ошибку"""
         if result.isError():
-            self._errors.append(result.getError())
+            self.putError(result.getError())
 
         return result
+
+    def putError(self, error: E) -> None:
+        self._errors.append(error)
 
     def putMulti(self, result: Result[T, Iterable[E]]) -> Result[T, Iterable[E]]:
         """Поместить результат, содержащий множественные ошибки"""

@@ -2,7 +2,7 @@
 from itertools import chain
 from typing import Iterable
 
-from bytelang.abc.node import Directive
+from bytelang.impl.node.directive import Directive
 from bytelang.abc.parser import Parsable
 from bytelang.impl.node.directive import InstructionDefineDirective
 from bytelang.impl.parser.common import CommonParser

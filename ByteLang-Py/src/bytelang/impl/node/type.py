@@ -1,24 +1,30 @@
 from __future__ import annotations
 
+from abc import ABC
 from dataclasses import dataclass
 from typing import Iterable
 from typing import Optional
 
-from bytelang.abc.node import Expression
-from bytelang.abc.node import Node
-from bytelang.abc.parser import Parsable
 from bytelang.abc.parser import Parser
 from bytelang.core.tokens import TokenType
+from bytelang.impl.node.expression import Expression
 from bytelang.impl.node.expression import Identifier
+from bytelang.impl.node.super import SuperNode
+from bytelang.impl.semantizer.common import CommonSemanticContext
+from rustpy.result import MultipleErrorsResult
 from rustpy.result import Result
 
 
-class Type(Node):
+class Type(SuperNode[CommonSemanticContext, NotImplemented, 'Type'], ABC):
     """Узел типа"""
+
+    @classmethod
+    def parse(cls, parser: Parser) -> Result[Type, Iterable[str]]:
+        return PureType.parse(parser)
 
 
 @dataclass(frozen=True)
-class PureType(Type, Parsable[Type]):
+class PureType(Type):
     """Чистый тип"""
 
     id: Identifier
@@ -52,7 +58,7 @@ class ArrayType(Type):
 
 
 @dataclass(frozen=True)
-class Field(Node, Parsable[Node]):
+class Field(SuperNode[CommonSemanticContext, NotImplemented, "Field"]):
     """Узел объявления поля"""
 
     name: Identifier
@@ -63,11 +69,10 @@ class Field(Node, Parsable[Node]):
     @classmethod
     def parse(cls, parser: Parser) -> Result[Field, Iterable[str]]:
         """Парсинг токенов в поле"""
+        ret = MultipleErrorsResult()
 
-        if (name := Identifier.parse(parser)).isError():
-            return Result.error(name.getError())
+        name = ret.putSingle(Identifier.parse(parser))
+        ret.putSingle(parser.consume(TokenType.Colon))
+        pure = ret.putMulti(PureType.parse(parser))
 
-        if (token := parser.consume(TokenType.Colon)).isError():
-            return Result.error(token.getError())
-
-        return PureType.parse(parser).map(lambda t: cls(name.unwrap(), t))
+        return ret.make(lambda: cls(name.unwrap(), pure.unwrap()))

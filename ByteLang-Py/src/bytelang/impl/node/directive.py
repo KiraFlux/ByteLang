@@ -1,21 +1,27 @@
 from __future__ import annotations
 
+from abc import ABC
 from dataclasses import dataclass
 from typing import Iterable
 
-from bytelang.abc.node import Directive
-from bytelang.abc.node import Expression
-from bytelang.abc.parser import Parsable
 from bytelang.abc.parser import Parser
+from bytelang.abc.semantic import SemanticContext
 from bytelang.core.tokens import TokenType
+from bytelang.impl.node.expression import Expression
 from bytelang.impl.node.expression import Identifier
+from bytelang.impl.node.statement import Statement
 from bytelang.impl.node.type import Field
+from bytelang.impl.semantizer.common import CommonSemanticContext
 from rustpy.result import MultipleErrorsResult
 from rustpy.result import Result
 
 
+class Directive[S: SemanticContext](Statement[S], ABC):
+    """Узел Директивы"""
+
+
 @dataclass(frozen=True)
-class ConstDefineDirective(Directive, Parsable[Directive]):
+class ConstDefineDirective(Directive[CommonSemanticContext]):
     """Узел определения константного значения"""
 
     id: Identifier
@@ -29,13 +35,13 @@ class ConstDefineDirective(Directive, Parsable[Directive]):
 
         _id = ret.putSingle(Identifier.parse(parser))
         ret.putSingle(parser.consume(TokenType.Assignment))
-        expr = ret.putMulti(parser.expression())
+        expr = ret.putMulti(Expression.parse(parser))
 
         return ret.make(lambda: cls(_id.unwrap(), expr.unwrap()))
 
 
 @dataclass(frozen=True)
-class StructDefineDirective(Directive, Parsable[Directive]):
+class StructDefineDirective(Directive[CommonSemanticContext]):
     """Узел определения структурного типа"""
 
     id: Identifier
@@ -44,17 +50,18 @@ class StructDefineDirective(Directive, Parsable[Directive]):
     """Поля структуры"""
 
     @classmethod
-    def parse(cls, parser: Parser) -> Result[Parsable[Directive], Iterable[str]]:
+    def parse(cls, parser: Parser) -> Result[Directive, Iterable[str]]:
         ret = MultipleErrorsResult()
 
         _id = ret.putSingle(Identifier.parse(parser))
-        fields = ret.putMulti(parser.braceArguments(lambda: Field.parse(parser), TokenType.OpenFigure, TokenType.CloseFigure))
+        fields = ret.putMulti(
+            parser.braceArguments(lambda: Field.parse(parser), TokenType.OpenFigure, TokenType.CloseFigure))
 
         return ret.make(lambda: cls(_id.unwrap(), fields.unwrap()))
 
 
 @dataclass(frozen=True)
-class MacroDefineDirective(Directive, Parsable[Directive]):
+class MacroDefineDirective(Directive[CommonSemanticContext]):
     """Узел определения макроса"""
 
     id: Identifier
@@ -69,15 +76,16 @@ class MacroDefineDirective(Directive, Parsable[Directive]):
         ret = MultipleErrorsResult()
 
         _id = ret.putSingle(Identifier.parse(parser))
-        args = ret.putMulti(parser.braceArguments(lambda: Identifier.parse(parser), TokenType.OpenRound, TokenType.CloseRound))
+        args = ret.putMulti(
+            parser.braceArguments(lambda: Identifier.parse(parser), TokenType.OpenRound, TokenType.CloseRound))
         ret.putSingle(parser.consume(TokenType.Arrow))
-        expr = ret.putMulti(parser.expression())
+        expr = ret.putMulti(Expression.parse(parser))
 
         return ret.make(lambda: cls(_id.unwrap(), args.unwrap(), expr.unwrap()))
 
 
 @dataclass(frozen=True)
-class InstructionDefineDirective(Directive, Parsable[Directive]):
+class InstructionDefineDirective(Directive):
     """Узел определения структуры"""
 
     id: Identifier
@@ -96,7 +104,7 @@ class InstructionDefineDirective(Directive, Parsable[Directive]):
 
 
 @dataclass(frozen=True)
-class EnvSelectDirective(Directive, Parsable[Directive]):
+class EnvSelectDirective(Directive):
     """Директива выбора окружения"""
 
     env: Identifier
@@ -108,7 +116,7 @@ class EnvSelectDirective(Directive, Parsable[Directive]):
 
 
 @dataclass(frozen=True)
-class MarkDefineDirective(Directive, Parsable[Directive]):
+class MarkDefineDirective(Directive):
     """Узел определения метки"""
 
     mark: Identifier
