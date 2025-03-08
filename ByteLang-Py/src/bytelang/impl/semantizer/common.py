@@ -32,7 +32,7 @@ def _test():
     from bytelang.impl.parser.common import CommonParser
 
     code = """
-    .struct MyStruct { foo: *[123]**u8 } # Указатель на -> массив типа -> указатель на -> указатель на -> u8
+    .struct MyStruct { foo: *u8, bar: [10][5]u8 } 
     """
 
     try:
