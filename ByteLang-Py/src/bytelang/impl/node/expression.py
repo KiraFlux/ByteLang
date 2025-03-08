@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from typing import Iterable
 from typing import Mapping
 from typing import Optional
+from typing import Sequence
 
 from bytelang.abc.parser import Parser
 from bytelang.abc.registry import Registry
@@ -18,7 +19,6 @@ from bytelang.core.result import MultipleErrorsResult
 from bytelang.core.result import Result
 from bytelang.core.result import SingleResult
 from bytelang.core.tokens import TokenType
-from bytelang.impl.node.component import HasUniqueArguments
 from bytelang.impl.node.super import SuperNode
 from bytelang.impl.semantizer.common import CommonSemanticContext
 
@@ -73,11 +73,14 @@ class Identifier(Expression):
 class MacroProfileImpl(MacroProfile[Expression]):
     """Реализация профиля макроса"""
 
-    arguments: Iterable[Identifier]
+    arguments: Sequence[Identifier]
     template: Expression
 
-    def expand(self, arguments: Iterable[Expression]) -> Expression:
-        return self.template.expand({key: expr for key, expr in zip(self.arguments, arguments)})
+    def expand(self, arguments: Sequence[Expression]) -> Result[Expression, str]:
+        if (len_got := len(arguments)) != (len_expected := len(self.arguments)):
+            return SingleResult.error(f"Expected: {len_expected} ({self.arguments}), got: {len_got} ({arguments})")
+
+        return SingleResult.ok(self.template.expand({key: expr for key, expr in zip(self.arguments, arguments)}))
 
 
 @dataclass(frozen=True)
@@ -156,7 +159,7 @@ class BinaryOp(Expression):
         if ret.isError():
             return ret.flow()
 
-        c = ret.putMulti(a.unwrap().applyBinaryOperator(b.unwrap(), self.op))
+        c = ret.putSingle(a.unwrap().applyBinaryOperator(b.unwrap(), self.op))
 
         return ret.make(lambda: c.unwrap())
 
@@ -187,14 +190,26 @@ class HasUniqueID(HasIdentifier):
 
 
 @dataclass(frozen=True)
-class MacroCall(Expression, HasExistingID, HasUniqueArguments[Expression]):
+class MacroCall(Expression, HasExistingID):
     """Узел развёртки макроса"""
 
+    arguments: Iterable[Expression]
+
     def expand(self, table: Mapping[Identifier, Expression]) -> Expression:
-        return MacroCall((arg.expand(table) for arg in self.arguments), self.identifier)
+        return MacroCall(self.identifier, (arg.expand(table) for arg in self.arguments))
 
     def accept(self, context: CommonSemanticContext) -> Result[RValueProfile, Iterable[str]]:
-        return self.checkIdentifier(context.macro_registry).map(lambda m: m.expand(self.arguments).accept(context), lambda e: (e,))
+        macro_result = self.checkIdentifier(context.macro_registry)
+
+        if macro_result.isError():
+            return macro_result.flow(lambda e: (e,))
+
+        expand: Result[Expression, str] = macro_result.unwrap().expand(self.arguments)
+
+        if expand.isError():
+            return expand.flow(lambda e: (e,))
+
+        return expand.unwrap().accept(context)
 
     @classmethod
     def parse(cls, parser: Parser) -> Result[MacroCall, Iterable[str]]:
@@ -203,4 +218,4 @@ class MacroCall(Expression, HasExistingID, HasUniqueArguments[Expression]):
         _id = ret.putSingle(parser.consume(TokenType.MacroCall))
         args = ret.putMulti(parser.braceArguments(lambda: Expression.parse(parser), TokenType.OpenRound, TokenType.CloseRound))
 
-        return ret.make(lambda: cls(args.unwrap(), _id.unwrap().value))
+        return ret.make(lambda: cls(_id.unwrap().value, args.unwrap()))

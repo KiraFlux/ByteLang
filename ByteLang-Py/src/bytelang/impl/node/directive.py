@@ -112,7 +112,7 @@ class StructDefine(CommonDirective, HasUniqueID, HasUniqueArguments[Field]):
 class MacroDefine(CommonDirective, HasUniqueID, HasUniqueArguments[Identifier]):
     """Узел определения макроса"""
 
-    expression: Expression
+    template: Expression
     """Выражение, в которое развертывается макрос"""
 
     def accept(self, context: CommonSemanticContext) -> Result[None, Iterable[str]]:
@@ -120,7 +120,7 @@ class MacroDefine(CommonDirective, HasUniqueID, HasUniqueArguments[Identifier]):
         ret.putMulti(self.checkArguments())
 
         if ret.isOk():
-            context.macro_registry.register(self.identifier.id, MacroProfileImpl(self.arguments, self.expression))
+            context.macro_registry.register(self.identifier.id, MacroProfileImpl(self.arguments, self.template))
 
         return ret.map(lambda _: None)
 

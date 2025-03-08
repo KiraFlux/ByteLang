@@ -29,6 +29,9 @@ def _test():
     from bytelang.impl.node.expression import BinaryOp, Literal
     from bytelang.core.ops import Operator
     from bytelang.core.profile.rvalue import IntegerRV
+    from bytelang.impl.node.directive import MacroDefine
+    from bytelang.impl.node.expression import MacroCall
+    from bytelang.impl.registry.immediate import MutableImmediateRegistry
 
     # code = """
     # .const hola = 123
@@ -42,32 +45,55 @@ def _test():
         # program = Program.parse(CommonParser(OutputStream(tuple(tokens)))).unwrap()
         # print(program)
 
-        from bytelang.impl.node.directive import MacroDefine
-        from bytelang.impl.node.expression import MacroCall
-        from bytelang.impl.registry.immediate import MutableImmediateRegistry
-
         program = Program(
             statements=(
 
                 MacroDefine(
                     arguments=(
-                        Identifier("xxx"),
+                        Identifier("a"),
+                        Identifier("b"),
                     ),
-                    identifier=Identifier("my_macro"),
-                    expression=BinaryOp(
+                    identifier=Identifier("add"),
+                    template=BinaryOp(
                         op=Operator.Plus,
-                        left=Identifier("xxx"),
-                        right=Literal(IntegerRV.new(5))
+                        left=Identifier("a"),
+                        right=Identifier("b")
+                    )
+                ),
+
+                MacroDefine(
+                    arguments=(
+                        Identifier("a"),
+                        Identifier("b"),
+                    ),
+                    identifier=Identifier("mul"),
+                    template=BinaryOp(
+                        op=Operator.Star,
+                        left=Identifier("a"),
+                        right=Identifier("b")
                     )
                 ),
 
                 ConstDefine(
-                    identifier=Identifier("hola"),
+                    identifier=Identifier("result"),
                     expression=MacroCall(
+                        identifier=Identifier("mul"),
                         arguments=(
-                            Literal(IntegerRV.new(2)),
+                            MacroCall(
+                                identifier=Identifier("add"),
+                                arguments=(
+                                    Literal(IntegerRV.new(5)),
+                                    Literal(IntegerRV.new(3)),
+                                )
+                            ),
+                            MacroCall(
+                                identifier=Identifier("add"),
+                                arguments=(
+                                    Literal(IntegerRV.new(1)),
+                                    Literal(IntegerRV.new(7)),
+                                )
+                            ),
                         ),
-                        identifier=Identifier("my_macro"),
                     )
                 ),
             )
