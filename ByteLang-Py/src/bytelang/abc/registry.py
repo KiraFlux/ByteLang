@@ -27,7 +27,7 @@ class Registry[Key, Item](ABC):
         return self._items.items()
 
 
-class RuntimeRegistry[Key, Item](Registry, ABC):
+class MutableRegistry[Key, Item](Registry[Key, Item], ABC):
     """Интерфейс позволяет добавлять элементы налету"""
 
     def register(self, key: Key, item: Item) -> None:
@@ -39,7 +39,7 @@ class RuntimeRegistry[Key, Item](Registry, ABC):
         self._items.update(items)
 
 
-class LazyRegistry[Key, Item](Registry[Key, Item]):
+class LazyRegistry[Key, Item](Registry[Key, Item], ABC):
     """Ленивый реестр - загрузка происходит по мере необходимости"""
 
     def get(self, key: Key) -> Optional[Item]:
@@ -57,7 +57,7 @@ class LazyRegistry[Key, Item](Registry[Key, Item]):
         """Загрузить предмет"""
 
 
-class CatalogRegistry[Item](LazyRegistry[str, Item]):
+class CatalogRegistry[Item](LazyRegistry[str, Item], ABC):
     """Каталоговый реестр - загрузка файлов по мере необходимости"""
 
     def __init__(self, catalog: Path, extension: str) -> None:

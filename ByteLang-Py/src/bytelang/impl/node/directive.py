@@ -7,21 +7,22 @@ from typing import Iterable
 
 from bytelang.abc.parser import Parser
 from bytelang.abc.semantic import SemanticContext
+from bytelang.core.result import MultipleErrorsResult
+from bytelang.core.result import Result
+from bytelang.core.result import ResultAccumulator
+from bytelang.core.result import SingleResult
 from bytelang.core.tokens import TokenType
+from bytelang.impl.node.component import HasUniqueArguments
 from bytelang.impl.node.expression import Expression
+from bytelang.impl.node.expression import HasExistingID
+from bytelang.impl.node.expression import HasUniqueID
 from bytelang.impl.node.expression import Identifier
+from bytelang.impl.node.expression import MacroProfileImpl
 from bytelang.impl.node.statement import Statement
-from bytelang.impl.node.super import HasArguments
-from bytelang.impl.node.super import HasExistingID
-from bytelang.impl.node.super import HasUniqueID
 from bytelang.impl.node.type import Field
 from bytelang.impl.semantizer.common import CommonSemanticContext
 from bytelang.impl.semantizer.package import PackageSemanticContext
 from bytelang.impl.semantizer.source import SourceSemanticContext
-from rustpy.result import MultipleErrorsResult
-from rustpy.result import Result
-from rustpy.result import ResultAccumulator
-from rustpy.result import SingleResult
 
 
 class Directive[S: SemanticContext](Statement[S], ABC):
@@ -66,7 +67,7 @@ class ConstDefine(CommonDirective, HasUniqueID):
         expr_value = ret.putMulti(self.expression.accept(context))
 
         if ret.isOk():
-            context.const_registry.register(self.identifier, expr_value.unwrap())
+            context.const_registry.register(self.identifier.id, expr_value.unwrap())
 
         return ret.make(lambda: None)
 
@@ -82,18 +83,18 @@ class ConstDefine(CommonDirective, HasUniqueID):
 
 
 @dataclass(frozen=True)
-class StructDefine(CommonDirective, HasUniqueID, HasArguments[Field]):
+class StructDefine(CommonDirective, HasUniqueID, HasUniqueArguments[Field]):
     """Узел определения структурного типа"""
 
     def accept(self, context: CommonSemanticContext) -> Result[None, Iterable[str]]:
         ret = ResultAccumulator()
 
         ret.putOptionalError(self.checkIdentifier(context.type_registry))
-        ret.putMulti(self.checkArguments(context))
+        ret.putMulti(self.checkArguments())
 
         if ret.isOk():
             fi = ret.unwrap()
-            context.type_registry.register(self.identifier, NotImplemented)  # TODO реализовать
+            context.type_registry.register(self.identifier.id, NotImplemented)  # TODO реализовать (StructProfile (TypeProfile) )
 
         return ret.map(lambda _: None)
 
@@ -108,7 +109,7 @@ class StructDefine(CommonDirective, HasUniqueID, HasArguments[Field]):
 
 
 @dataclass(frozen=True)
-class MacroDefine(CommonDirective, HasUniqueID, HasArguments[Identifier]):
+class MacroDefine(CommonDirective, HasUniqueID, HasUniqueArguments[Identifier]):
     """Узел определения макроса"""
 
     expression: Expression
@@ -116,10 +117,10 @@ class MacroDefine(CommonDirective, HasUniqueID, HasArguments[Identifier]):
 
     def accept(self, context: CommonSemanticContext) -> Result[None, Iterable[str]]:
         ret = ResultAccumulator()
-        ret.putMulti(self.checkArguments(context))
+        ret.putMulti(self.checkArguments())
 
         if ret.isOk():
-            context.macro_registry.register(self.identifier, self)
+            context.macro_registry.register(self.identifier.id, MacroProfileImpl(self.arguments, self.expression))
 
         return ret.map(lambda _: None)
 
@@ -136,7 +137,7 @@ class MacroDefine(CommonDirective, HasUniqueID, HasArguments[Identifier]):
 
 
 @dataclass(frozen=True)
-class InstructionDefine(PackageDirective, HasUniqueID, HasArguments[Field]):
+class InstructionDefine(PackageDirective, HasUniqueID, HasUniqueArguments[Field]):
     """Узел определения структуры"""
 
     # TODO решить как будет работать Field
@@ -144,7 +145,7 @@ class InstructionDefine(PackageDirective, HasUniqueID, HasArguments[Field]):
         ret = ResultAccumulator()
 
         ret.putOptionalError(self.checkIdentifier(NotImplemented))
-        ret.putMulti(self.checkArguments(context))
+        ret.putMulti(self.checkArguments())
 
         return ret.map(lambda _: None)
 

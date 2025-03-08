@@ -9,7 +9,7 @@ from typing import TextIO
 
 from bytelang.core.lexer import Lexer
 from bytelang.abc.parser import Parser
-from rustpy.result import Result
+from bytelang.core.result import Result
 
 
 @dataclass(frozen=True, kw_only=True)

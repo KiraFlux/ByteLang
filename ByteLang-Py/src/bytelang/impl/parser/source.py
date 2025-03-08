@@ -11,7 +11,7 @@ from bytelang.impl.node.directive import MarkDefine
 from bytelang.impl.node.instruction import InstructionCall
 from bytelang.impl.node.statement import Statement
 from bytelang.impl.parser.common import CommonParser
-from rustpy.result import Result
+from bytelang.core.result import Result
 
 
 class SourceParser(CommonParser[Statement]):

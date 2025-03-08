@@ -6,23 +6,28 @@ from dataclasses import dataclass
 from typing import Iterable
 
 from bytelang.abc.parser import Parser
+from bytelang.core.result import MultipleErrorsResult
+from bytelang.core.result import Result
 from bytelang.core.tokens import TokenType
 from bytelang.impl.node.expression import Expression
 from bytelang.impl.node.expression import Identifier
 from bytelang.impl.node.statement import Statement
-from bytelang.impl.semantizer.package import PackageSemanticContext
-from rustpy.result import MultipleErrorsResult
-from rustpy.result import Result
+from bytelang.impl.node.component import HasUniqueArguments
+from bytelang.impl.node.expression import HasExistingID
+from bytelang.impl.semantizer.source import SourceSemanticContext
 
 
 @dataclass(frozen=True)
-class InstructionCall(Statement[PackageSemanticContext]):
+class InstructionCall(Statement[SourceSemanticContext], HasExistingID, HasUniqueArguments[Expression]):
     """Узел вызова инструкции"""
 
-    id: Identifier
-    """Идентификатор выражения"""
-    args: Iterable[Expression]
-    """Аргументы"""
+    def accept(self, context: SourceSemanticContext) -> Result[None, Iterable[str]]:
+        ret = MultipleErrorsResult()
+        pass  # TODO # TODO push to write stream (read / write streams)
+
+        # ret.putOptionalError(self.checkIdentifier())
+
+        return ret.make(lambda: None)
 
     @classmethod
     def parse(cls, parser: Parser) -> Result[InstructionCall, Iterable[str]]:
@@ -32,4 +37,4 @@ class InstructionCall(Statement[PackageSemanticContext]):
         _id = ret.putSingle(Identifier.parse(parser))
         args = ret.putMulti(parser.arguments(lambda: Expression.parse(parser), TokenType.Comma, TokenType.StatementEnd))
 
-        return ret.make(lambda: cls(_id.unwrap(), args.unwrap()))
+        return ret.make(lambda: cls(args.unwrap(), _id.unwrap()))

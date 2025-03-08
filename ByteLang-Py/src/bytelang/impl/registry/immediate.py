@@ -1,11 +1,12 @@
 """Реализация реестра мгновенной загрузки"""
+from abc import ABC
 from abc import abstractmethod
 from pathlib import Path
 from typing import Iterable
 from typing import Optional
 
+from bytelang.abc.registry import MutableRegistry
 from bytelang.abc.registry import Registry
-from bytelang.abc.registry import RuntimeRegistry
 
 
 class ImmediateRegistry[Key, Item](Registry[Key, Item]):
@@ -19,7 +20,7 @@ class ImmediateRegistry[Key, Item](Registry[Key, Item]):
         return self._items.get(key)
 
 
-class FileRegistry[Item, RawItem](ImmediateRegistry[str, Item]):
+class FileRegistry[Item, RawItem](ImmediateRegistry[str, Item], ABC):
     """Файл-Реестр - загрузка данных из одного файла"""
 
     def __init__(self, path: Path) -> None:
@@ -30,5 +31,5 @@ class FileRegistry[Item, RawItem](ImmediateRegistry[str, Item]):
         """Преобразовать содержимое файла в последовательность пар ключ - предмет"""
 
 
-class RuntimeImmediateRegistry[Key, Item](RuntimeRegistry[Key, Item], ImmediateRegistry[Key, Item]):
+class MutableImmediateRegistry[Key, Item](MutableRegistry[Key, Item], ImmediateRegistry[Key, Item], ABC):
     """Реестр мгновенной загрузки, изменяемый"""

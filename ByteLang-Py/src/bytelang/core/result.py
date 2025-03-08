@@ -51,7 +51,7 @@ class Result[T, E](ABC):
         return not self.isOk()
 
     def unwrapOr(self, default: T) -> T:
-        """Получить значение или дефолт если ошибка"""
+        """Получить значение или значение по умолчанию"""
         return self._getValue() if self.isOk() else default
 
     def unwrap(self) -> T:
@@ -100,9 +100,12 @@ class SingleResult[T, E](Result[T, E]):
         return self._value
 
 
+# TODO Iterable[E] -> Stream
+
 class MultipleErrorsResult[T, E](Result[T, Iterable[E]]):
 
     def __init__(self) -> None:
+        # TODO stream
         self._errors: Final = list[E]()
 
     def make(self, ok_maker: Callable[[], T]) -> Result[T, Iterable[E]]:
@@ -144,6 +147,7 @@ class ResultAccumulator[T, E](Result[Iterable[T], Iterable[E]]):
     """Аккумулятор результатов"""
 
     def __init__(self) -> None:
+        # TODO stream
         self._errors: Final = list[E]()
         self._results: Final = list[T]()
 

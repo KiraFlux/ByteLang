@@ -6,19 +6,24 @@ from abc import ABC
 from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Iterable
+from typing import Mapping
+from typing import Optional
 
 from bytelang.abc.parser import Parser
-from bytelang.core.rvalue import RValueSpec
-from bytelang.core.tokens import Operator
+from bytelang.abc.registry import Registry
+from bytelang.core.ops import Operator
+from bytelang.core.profile.macro import MacroProfile
+from bytelang.core.profile.rvalue import RValueProfile
+from bytelang.core.result import MultipleErrorsResult
+from bytelang.core.result import Result
+from bytelang.core.result import SingleResult
 from bytelang.core.tokens import TokenType
+from bytelang.impl.node.component import HasUniqueArguments
 from bytelang.impl.node.super import SuperNode
 from bytelang.impl.semantizer.common import CommonSemanticContext
-from rustpy.result import MultipleErrorsResult
-from rustpy.result import Result
-from rustpy.result import SingleResult
 
 
-class Expression(SuperNode[CommonSemanticContext, RValueSpec, "Expression"], ABC):
+class Expression(SuperNode[CommonSemanticContext, RValueProfile, "Expression"], ABC):
     """Выражение"""
 
     @classmethod
@@ -27,7 +32,7 @@ class Expression(SuperNode[CommonSemanticContext, RValueSpec, "Expression"], ABC
             case TokenType.Identifier:
                 return Identifier.parse(parser)
 
-            case TokenType.Macro:
+            case TokenType.MacroCall:
                 return MacroCall.parse(parser)
 
             case literal_token if literal_token.isLiteral():
@@ -37,8 +42,12 @@ class Expression(SuperNode[CommonSemanticContext, RValueSpec, "Expression"], ABC
                 return SingleResult.error((f"Token not an expression: {not_expression_token}",))
 
     @abstractmethod
-    def accept(self, context: CommonSemanticContext) -> Result[RValueSpec, Iterable[str]]:
+    def accept(self, context: CommonSemanticContext) -> Result[RValueProfile, Iterable[str]]:
         pass
+
+    @abstractmethod
+    def expand(self, table: Mapping[Identifier, Expression]) -> Expression:
+        """Развернуть макрос"""
 
 
 @dataclass(frozen=True)
@@ -48,7 +57,10 @@ class Identifier(Expression):
     id: str
     """Имя"""
 
-    def accept(self, context: CommonSemanticContext) -> Result[RValueSpec, Iterable[str]]:
+    def expand(self, table: Mapping[Identifier, Expression]) -> Expression:
+        return table.get(self, self)
+
+    def accept(self, context: CommonSemanticContext) -> Result[RValueProfile, Iterable[str]]:
         return SingleResult.fromOptional(context.const_registry.get(self.id), lambda: (f"Const not found: {self}",))
 
     @classmethod
@@ -58,11 +70,25 @@ class Identifier(Expression):
 
 
 @dataclass(frozen=True)
+class MacroProfileImpl(MacroProfile[Expression]):
+    """Реализация профиля макроса"""
+
+    arguments: Iterable[Identifier]
+    template: Expression
+
+    def expand(self, arguments: Iterable[Expression]) -> Expression:
+        return self.template.expand({key: expr for key, expr in zip(self.arguments, arguments)})
+
+
+@dataclass(frozen=True)
 class Literal(Expression):
     """Узел Литерала"""
 
-    value: RValueSpec
+    value: RValueProfile
     """Значение"""
+
+    def expand(self, table: Mapping[Identifier, Expression]) -> Expression:
+        return self
 
     @classmethod
     def parse(cls, parser: Parser) -> Result[Literal, Iterable[str]]:
@@ -75,7 +101,7 @@ class Literal(Expression):
 
         return ret.make(lambda: cls(rv_maker(token.value)))
 
-    def accept(self, context: CommonSemanticContext) -> Result[RValueSpec, Iterable[str]]:
+    def accept(self, context: CommonSemanticContext) -> Result[RValueProfile, Iterable[str]]:
         return SingleResult.ok(self.value)
 
 
@@ -88,6 +114,9 @@ class UnaryOp(Expression):
     operand: Expression
     """Операнд"""
 
+    def expand(self, table: Mapping[Identifier, Expression]) -> Expression:
+        return UnaryOp(self.op, self.operand.expand(table))
+
     @classmethod
     def parse(cls, parser: Parser) -> Result[UnaryOp, Iterable[str]]:
         token = parser.tokens.next()
@@ -97,7 +126,7 @@ class UnaryOp(Expression):
 
         return Expression.parse(parser).map(lambda expr: cls(operator, expr))
 
-    def accept(self, context: CommonSemanticContext) -> Result[RValueSpec, Iterable[str]]:
+    def accept(self, context: CommonSemanticContext) -> Result[RValueProfile, Iterable[str]]:
         if (rv := self.operand.accept(context)).isError():
             return rv
 
@@ -115,7 +144,10 @@ class BinaryOp(Expression):
     right: Expression
     """Правый операнд"""
 
-    def accept(self, context: CommonSemanticContext) -> Result[RValueSpec, Iterable[str]]:
+    def expand(self, table: Mapping[Identifier, Expression]) -> Expression:
+        return BinaryOp(self.op, self.left.expand(table), self.right.expand(table))
+
+    def accept(self, context: CommonSemanticContext) -> Result[RValueProfile, Iterable[str]]:
         ret = MultipleErrorsResult()
 
         a = ret.putMulti(self.left.accept(context))
@@ -130,27 +162,45 @@ class BinaryOp(Expression):
 
 
 @dataclass(frozen=True)
-class MacroCall(Expression):
+class HasIdentifier:
+    """Узел имеет идентификатор"""
+
+    identifier: Identifier
+    """Идентификатор узла"""
+
+
+class HasExistingID(HasIdentifier):
+    """Узел имеет идентификатор, уже содержащийся в реестре"""
+
+    def checkIdentifier[T](self, registry: Registry[str, T]) -> Result[T, str]:
+        """Проверить наличие идентификатора и получить результат"""
+        return SingleResult.fromOptional(registry.get(self.identifier.id), lambda: f"ID{self} not existing in {registry}")
+
+
+class HasUniqueID(HasIdentifier):
+    """Узел имеет уникальный идентификатор"""
+
+    def checkIdentifier[T](self, registry: Registry[str, T]) -> Optional[str]:
+        """Проверить уникальность идентификатора"""
+        if registry.has(self.identifier.id):
+            return f"{registry} has {self}"
+
+
+@dataclass(frozen=True)
+class MacroCall(Expression, HasExistingID, HasUniqueArguments[Expression]):
     """Узел развёртки макроса"""
 
-    id: Identifier
-    """Идентификатор макроса"""
-    args: Iterable[Expression]
-    """Аргументы развертки"""
+    def expand(self, table: Mapping[Identifier, Expression]) -> Expression:
+        return MacroCall((arg.expand(table) for arg in self.arguments), self.identifier)
 
-    def accept(self, context: CommonSemanticContext) -> Result[RValueSpec, Iterable[str]]:
-        macro = context.macro_registry.get(self.id)
-
-        if macro is None:
-            return SingleResult.error((f"macro not existing: {self}",))
-
-        # TODO доделать развертку макроса
+    def accept(self, context: CommonSemanticContext) -> Result[RValueProfile, Iterable[str]]:
+        return self.checkIdentifier(context.macro_registry).map(lambda m: m.expand(self.arguments).accept(context), lambda e: (e,))
 
     @classmethod
     def parse(cls, parser: Parser) -> Result[MacroCall, Iterable[str]]:
         ret = MultipleErrorsResult()
 
-        _id = ret.putSingle(parser.consume(TokenType.Macro))
+        _id = ret.putSingle(parser.consume(TokenType.MacroCall))
         args = ret.putMulti(parser.braceArguments(lambda: Expression.parse(parser), TokenType.OpenRound, TokenType.CloseRound))
 
-        return ret.make(lambda: cls(_id.unwrap().value, args.unwrap()))
+        return ret.make(lambda: cls(args.unwrap(), _id.unwrap().value))

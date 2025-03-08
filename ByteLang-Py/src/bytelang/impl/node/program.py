@@ -6,11 +6,11 @@ from typing import Sequence
 
 from bytelang.abc.parser import Parser
 from bytelang.abc.semantic import SemanticContext
+from bytelang.core.result import MultipleErrorsResult
+from bytelang.core.result import Result
+from bytelang.core.result import ResultAccumulator
 from bytelang.impl.node.statement import Statement
 from bytelang.impl.node.super import SuperNode
-from rustpy.result import MultipleErrorsResult
-from rustpy.result import Result
-from rustpy.result import ResultAccumulator
 
 
 @dataclass(frozen=True)
@@ -33,9 +33,6 @@ class Program[S: SemanticContext](SuperNode[S, None, "Program"]):
         resulter = ResultAccumulator()
 
         while parser.tokens.peek() is not None:
-            node = parser.statement()
+            resulter.putMulti(parser.statement())
 
-            if node.isOk() and node.unwrap() is not None:
-                resulter.putMulti(node)
-
-        return resulter.mapSingle(lambda statements: Program(statements))
+        return resulter.mapSingle(lambda statements: Program(tuple(filter(None.__ne__, statements))))

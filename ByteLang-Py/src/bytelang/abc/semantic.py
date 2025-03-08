@@ -3,7 +3,7 @@ from abc import ABC
 from abc import abstractmethod
 from typing import Iterable
 
-from rustpy.result import Result
+from bytelang.core.result import Result
 
 
 class SemanticContext(ABC):

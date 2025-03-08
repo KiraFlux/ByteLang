@@ -2,30 +2,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from enum import StrEnum
 from enum import auto
 from typing import Callable
 from typing import Optional
 
-from bytelang.core.rvalue import FloatRV
-from bytelang.core.rvalue import IntegerRV
-from bytelang.core.rvalue import RValueSpec
+from bytelang.core.ops import Operator
+from bytelang.core.profile.rvalue import FloatRV
+from bytelang.core.profile.rvalue import IntegerRV
+from bytelang.core.profile.rvalue import RValueProfile
 
 type _Value = str | int | float | None
-
-
-class Operator(StrEnum):
-    """Операторы"""
-
-    Dot = "."
-    Plus = "+"
-    Minus = "-"
-    Star = "*"
-    Slash = "/"
-
-    def regex(self) -> str:
-        """Преобразовать значение в регулярное выражение"""
-        return rf"\{self.value}"
 
 
 class _Kind(Enum):
@@ -63,11 +49,6 @@ class _Spec[T: _Value]:
         """Пропуск"""
         return cls(_Kind.Skip, c)
 
-    @classmethod
-    def identifier(cls) -> _Spec[str]:
-        """Идентификатор"""
-        return cls(_Kind.Common, r'[a-zA-Z_]\w*')
-
 
 @dataclass(frozen=True)
 class _LexemeTransformer[T: _Value](_Spec):
@@ -85,18 +66,23 @@ class _LexemeTransformer[T: _Value](_Spec):
         return cls(_Kind.Common, r'\.[a-zA-Z_]\w*', lambda s: s.lstrip('.'))
 
     @classmethod
-    def macro(cls) -> _Spec[str]:
-        """Директива"""
+    def macroCall(cls) -> _Spec[str]:
+        """Вызов макроса"""
         return cls(_Kind.Common, r'\@[a-zA-Z_]\w*', lambda s: s.lstrip('@'))
+
+    @classmethod
+    def identifier(cls) -> _Spec[str]:
+        """Идентификатор"""
+        return cls(_Kind.Common, r'[a-zA-Z_]\w*', lambda s: s)
 
 
 @dataclass(frozen=True)
 class _LiteralSpec[T: (int, float, str)](_LexemeTransformer[T]):
-    rvalue_maker: Callable[[T], RValueSpec]
+    rvalue_maker: Callable[[T], RValueProfile]
     """Преобразователь токена в rvalue"""
 
     @classmethod
-    def new(cls, pattern: str, transformer: Callable[[str], T], rv_maker: Callable[[T], RValueSpec]) -> _LiteralSpec[T]:
+    def new(cls, pattern: str, transformer: Callable[[str], T], rv_maker: Callable[[T], RValueProfile]) -> _LiteralSpec[T]:
         """Создать вид литерала"""
         return cls(_Kind.Literal, pattern, transformer, rv_maker)
 
@@ -118,9 +104,9 @@ class TokenType(Enum):
 
     Directive = _LexemeTransformer.directive()
     """Вызов директивы"""
-    Macro = _LexemeTransformer.macro()
+    MacroCall = _LexemeTransformer.macroCall()
     """Вызов макроса"""
-    Identifier = _Spec.identifier()
+    Identifier = _LexemeTransformer.identifier()
     """Идентификатор (переменная, инструкция, константа, метка и т.п.)"""
 
     # Литералы
@@ -208,15 +194,18 @@ class TokenType(Enum):
         if isinstance(self.value, _SpecOp):
             return self.value.op
 
-    def getRightValueMaker[T](self) -> Optional[Callable[[Token[T]], RValueSpec]]:
+    def getRightValueMaker[T](self) -> Optional[Callable[[Token[T]], RValueProfile]]:
         """Получить преобразователь из литерала в RV"""
-        if isinstance(self, _LiteralSpec):
-            return self.rvalue_maker
+        if isinstance(self.value, _LiteralSpec):
+            return self.value.rvalue_maker
 
     @classmethod
     def build_regex(cls) -> str:
         """Создает регулярное выражение для лексического анализа"""
         return '|'.join(f'(?P<{token.name}>{token.value.pattern})' for token in cls)
+
+    def __str__(self) -> str:
+        return f"{self.__class__.__name__}<{self.name}>"
 
 
 @dataclass(frozen=True)

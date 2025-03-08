@@ -1,20 +1,42 @@
 """Streams"""
 from dataclasses import dataclass
+from typing import Final
+from typing import Iterable
+from typing import MutableSequence
 from typing import Optional
 from typing import Sequence
 
 
 @dataclass
-class Stream[T]:
-    """Поток токенов"""
+class InputStream[T]:
+    """Поток входа (для записи)"""
 
-    _elements: Sequence[T]
-    _position: int = 0
+    _items: MutableSequence[T]
+
+    def put(self, item: T) -> None:
+        """Поместить элемент"""
+        self._items.append(item)
+
+    def extend(self, items: Iterable[T]) -> None:
+        """Добавить элементы"""
+        self._items.extend(items)
+
+    def getItems(self) -> Sequence[T]:
+        """Получить последовательность элементов"""
+        return self._items
+
+
+class OutputStream[T]:
+    """Поток вывода (для чтения)"""
+
+    def __init__(self, items: Sequence[T]) -> None:
+        self._items: Final = items
+        self._position = 0
 
     def peek(self) -> Optional[T]:
         """Получить последнее значение"""
-        if self._position < len(self._elements):
-            return self._elements[self._position]
+        if self._position < len(self._items):
+            return self._items[self._position]
 
     def next(self) -> Optional[T]:
         """Получить следующий элемент"""

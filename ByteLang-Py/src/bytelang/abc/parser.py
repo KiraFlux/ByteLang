@@ -7,20 +7,20 @@ from typing import Iterable
 from typing import Optional
 
 from bytelang.abc.node import Node
-from bytelang.core.stream import Stream
+from bytelang.core.stream import OutputStream
 from bytelang.core.tokens import Token
 from bytelang.core.tokens import TokenType
-from rustpy.result import MultipleErrorsResult
-from rustpy.result import Result
-from rustpy.result import ResultAccumulator
-from rustpy.result import SingleResult
+from bytelang.core.result import MultipleErrorsResult
+from bytelang.core.result import Result
+from bytelang.core.result import ResultAccumulator
+from bytelang.core.result import SingleResult
 
 
 @dataclass
 class Parser[Stmt: Node](ABC):
     """Парсер - создаёт AST"""
 
-    tokens: Stream[Token]
+    tokens: OutputStream[Token]
 
     def consume(self, token_type: TokenType) -> Result[Token, str]:
         """Получить ожидаемый токен"""

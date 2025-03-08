@@ -7,15 +7,15 @@ from typing import Iterable
 
 from bytelang.abc.parser import Parser
 from bytelang.core.tokens import TokenType
-from bytelang.core.type import TypeProfile
+from bytelang.core.profile.type import TypeProfile
 from bytelang.impl.node.expression import Expression
 from bytelang.impl.node.expression import Identifier
-from bytelang.impl.node.super import HasExistingID
-from bytelang.impl.node.super import HasIdentifier
+from bytelang.impl.node.expression import HasExistingID
+from bytelang.impl.node.expression import HasIdentifier
 from bytelang.impl.node.super import SuperNode
 from bytelang.impl.semantizer.common import CommonSemanticContext
-from rustpy.result import MultipleErrorsResult
-from rustpy.result import Result
+from bytelang.core.result import MultipleErrorsResult
+from bytelang.core.result import Result
 
 
 class Type(SuperNode[CommonSemanticContext, TypeProfile, 'Type'], ABC):

@@ -6,20 +6,20 @@ from dataclasses import dataclass
 from typing import Sequence
 
 from bytelang.abc.serializer import Serializable
-from bytelang.core.tokens import Operator
-from bytelang.core.type import TypeProfile
-from rustpy.result import Result
-from rustpy.result import SingleResult
+from bytelang.core.ops import Operator
+from bytelang.core.result import Result
+from bytelang.core.result import SingleResult
+from bytelang.core.profile.type import TypeProfile
 
 
 @dataclass(frozen=True)
-class RValueSpec[T: Serializable](ABC):
-    """Спецификация правостороннего значения"""
+class RValueProfile[T: Serializable](ABC):
+    """Профиль правостороннего значения"""
 
     value: T
 
     @classmethod
-    def new(cls, value: T) -> RValueSpec:
+    def new(cls, value: T) -> RValueProfile:
         """Создать спецификацию правостороннего значения"""
         return cls(value)
 
@@ -28,30 +28,30 @@ class RValueSpec[T: Serializable](ABC):
         """Получить профиль типа"""
 
     @abstractmethod
-    def applyUnaryOperator(self, op: Operator) -> Result[RValueSpec, str]:
+    def applyUnaryOperator(self, op: Operator) -> Result[RValueProfile, str]:
         """Применить данный оператор над значением"""
         return SingleResult.error(f"{self} support not {op}")
 
     @abstractmethod
-    def applyBinaryOperator(self, other: RValueSpec, op: Operator) -> Result[RValueSpec, str]:
+    def applyBinaryOperator(self, other: RValueProfile, op: Operator) -> Result[RValueProfile, str]:
         """Применить данный бинарный оператор к значению"""
         return SingleResult.error(f"{self} {op} {other} not valid")
 
 
-class _NumberRV[T: (int, float)](RValueSpec[T]):
+class _NumberRV[T: (int, float)](RValueProfile[T], ABC):
 
-    def applyUnaryOperator(self, op: Operator) -> Result[RValueSpec, str]:
+    def applyUnaryOperator(self, op: Operator) -> Result[RValueProfile, str]:
         if op == Operator.Minus:
             return SingleResult.ok(_NumberRV(-self.value))
 
         return super().applyUnaryOperator(op)
 
-    def applyBinaryOperator(self, other: RValueSpec, op: Operator) -> Result[RValueSpec, str]:
+    def applyBinaryOperator(self, other: RValueProfile, op: Operator) -> Result[RValueProfile, str]:
         a = self.value
         b = other.value
 
-        def _make(value: T):
-            return SingleResult.ok(value)
+        def _make(value: T) -> Result[RValueProfile, str]:
+            return SingleResult.ok(self.new(value))
 
         match op:
             case Operator.Plus:
@@ -74,10 +74,17 @@ class _NumberRV[T: (int, float)](RValueSpec[T]):
 class IntegerRV(_NumberRV[int]):
     """Значение целого числа"""
 
+    @classmethod
+    def new(cls, value: int) -> RValueProfile[int]:
+        return super().new(int(value))
+
+    def getTypeProfile(self) -> TypeProfile[int]:
+        pass
+
 
 class FloatRV(_NumberRV[float]):
     """Значение вещественного числа"""
 
 
-class InitializerListRV[T: Sequence[Serializable]](RValueSpec[T]):
+class InitializerListRV[T: Sequence[Serializable]](RValueProfile[T]):
     """Список инициализации"""

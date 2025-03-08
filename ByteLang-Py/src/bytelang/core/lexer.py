@@ -5,9 +5,9 @@ from typing import TextIO
 
 from bytelang.core.tokens import Token
 from bytelang.core.tokens import TokenType
-from rustpy.result import Result
-from rustpy.result import ResultAccumulator
-from rustpy.result import SingleResult
+from bytelang.core.result import Result
+from bytelang.core.result import ResultAccumulator
+from bytelang.core.result import SingleResult
 
 
 @dataclass(frozen=True)
@@ -40,7 +40,7 @@ class Lexer:
                 position += 1
                 continue
 
-            t = TokenType[match.lastgroup].transform(match.group())
+            t: Token = TokenType[match.lastgroup].transform(match.group())
             position += match.end()
 
             if t is None:
