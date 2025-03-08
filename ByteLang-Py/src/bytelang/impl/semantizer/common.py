@@ -24,80 +24,24 @@ class CommonSemanticContext(SemanticContext):
 def _test():
     from rustpy.exceptions import Panic
     from bytelang.impl.node.program import Program
-    from bytelang.impl.node.directive import ConstDefine
-    from bytelang.impl.node.expression import Identifier
-    from bytelang.impl.node.expression import BinaryOp, Literal
-    from bytelang.core.ops import Operator
-    from bytelang.core.profile.rvalue import IntegerRV
-    from bytelang.impl.node.directive import MacroDefine
-    from bytelang.impl.node.expression import MacroCall
     from bytelang.impl.registry.immediate import MutableImmediateRegistry
+    from bytelang.core.stream import OutputStream
+    from bytelang.core.lexer import Lexer
+    from bytelang.core.tokens import TokenType
+    from io import StringIO
+    from bytelang.impl.parser.common import CommonParser
 
-    # code = """
-    # .const hola = 123
-    # """
+    code = """
+    .struct MyStruct { foo: *[123]**u8 } # Указатель на -> массив типа -> указатель на -> указатель на -> u8
+    """
 
     try:
 
-        # tokens = Lexer(TokenType.build_regex()).run(StringIO(code)).unwrap()
-        # print(tokens)
-        #
-        # program = Program.parse(CommonParser(OutputStream(tuple(tokens)))).unwrap()
-        # print(program)
+        tokens = Lexer(TokenType.build_regex()).run(StringIO(code)).unwrap()
+        print(tokens)
 
-        program = Program(
-            statements=(
-
-                MacroDefine(
-                    arguments=(
-                        Identifier("a"),
-                        Identifier("b"),
-                    ),
-                    identifier=Identifier("add"),
-                    template=BinaryOp(
-                        op=Operator.Plus,
-                        left=Identifier("a"),
-                        right=Identifier("b")
-                    )
-                ),
-
-                MacroDefine(
-                    arguments=(
-                        Identifier("a"),
-                        Identifier("b"),
-                    ),
-                    identifier=Identifier("mul"),
-                    template=BinaryOp(
-                        op=Operator.Star,
-                        left=Identifier("a"),
-                        right=Identifier("b")
-                    )
-                ),
-
-                ConstDefine(
-                    identifier=Identifier("result"),
-                    expression=MacroCall(
-                        identifier=Identifier("mul"),
-                        arguments=(
-                            MacroCall(
-                                identifier=Identifier("add"),
-                                arguments=(
-                                    Literal(IntegerRV.new(5)),
-                                    Literal(IntegerRV.new(3)),
-                                )
-                            ),
-                            MacroCall(
-                                identifier=Identifier("add"),
-                                arguments=(
-                                    Literal(IntegerRV.new(1)),
-                                    Literal(IntegerRV.new(7)),
-                                )
-                            ),
-                        ),
-                    )
-                ),
-            )
-        )
+        program = Program.parse(CommonParser(OutputStream(tuple(tokens)))).unwrap()
+        print(program)
 
         context = CommonSemanticContext(
             MutableImmediateRegistry(()),
@@ -105,7 +49,7 @@ def _test():
             MutableImmediateRegistry(()),
         )
 
-        program.accept(context).unwrap()
+        # program.accept(context).unwrap()
 
         print("\n".join(map(str, context.const_registry.getItems())))
         print("\n".join(map(str, context.macro_registry.getItems())))
