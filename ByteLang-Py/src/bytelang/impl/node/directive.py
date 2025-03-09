@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Iterable
 
 from bytelang.abc.parser import Parser
+from bytelang.abc.profiles import PackageInstructionProfile
 from bytelang.abc.semantic import SemanticContext
 from bytelang.core.result import MultiErrorResult
 from bytelang.core.result import Result
@@ -194,7 +195,6 @@ class InstructionDefine(PackageDirective, HasUniqueID, HasUniqueArguments[Field]
     def getIdentifier(cls) -> str:
         return "inst"
 
-    # TODO решить как будет работать Field
     @classmethod
     def parse(cls, parser: Parser) -> Result[Directive, Iterable[str]]:
         ret = MultiErrorResult()
@@ -205,14 +205,19 @@ class InstructionDefine(PackageDirective, HasUniqueID, HasUniqueArguments[Field]
         return ret.make(lambda: cls(args.unwrap(), _id.unwrap()))
 
     def accept(self, context: PackageSemanticContext) -> Result[None, Iterable[str]]:
-        ret = ResultAccumulator()
+        ret_0 = MultiErrorResult()
+        ret_0.putOptionalError(self.checkIdentifier(context.instruction_registry))
+        ret_0.putMulti(self.checkArguments())
 
-        ret.putOptionalError(self.checkIdentifier(NotImplemented))
-        ret.putMulti(self.checkArguments())
+        if ret_0.isError():
+            return ret_0.make(lambda: None)
 
-        raise NotImplementedError
+        ret_1 = ResultAccumulator()
 
-        # return ret.map(lambda _: None)
+        for arg in self.arguments:
+            ret_1.putMulti(arg.accept(context))
+
+        return ret_1.map(lambda fields: context.instruction_registry.register(self.identifier.id, PackageInstructionProfile(fields)))
 
 
 @dataclass(frozen=True)

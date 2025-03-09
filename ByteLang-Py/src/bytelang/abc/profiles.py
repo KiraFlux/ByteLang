@@ -10,6 +10,8 @@ from bytelang.abc.node import Node
 from bytelang.abc.semantic import SemanticContext
 from bytelang.core.ops import Operator
 from bytelang.core.result import Result
+from bytelang.core.result import ResultAccumulator
+from bytelang.core.result import SingleResult
 
 
 @dataclass(frozen=True)
@@ -48,3 +50,25 @@ class TypeProfile[S: SemanticContext](ABC):
     @abstractmethod
     def apply[T](self, rvalue: RValueProfile[T], context: S) -> Result[bytes, Iterable[str]]:
         """Применить профиль типа на rvalue"""
+
+
+@dataclass(frozen=True)
+class PackageInstructionProfile:
+    """Профиль инструкции пакета"""
+
+    _arguments: Sequence[tuple[str, TypeProfile]]
+    """Аргументы инструкции"""
+
+    def packArguments(self, arguments: Sequence[RValueProfile], context: SemanticContext) -> Result[bytes, Iterable[str]]:
+        """Упаковка аргументов для вызова инструкции"""
+
+        if (got := len(arguments)) != (need := len(self._arguments)):
+            return SingleResult.error((f"Invalid arg count: {got} {need=}",))
+
+        ret = ResultAccumulator()
+
+        for (arg_id, arg_type_profile), arg_value in zip(self._arguments, arguments):
+            ret.putMulti(arg_type_profile.apply(arg_value, context).map(err=lambda errors: map(
+                lambda e: f"arg {arg_id}: {arg_type_profile} fail pass value {arg_value} : {e}", errors)))
+
+        return ret.map(lambda packed_args: b"".join(packed_args))

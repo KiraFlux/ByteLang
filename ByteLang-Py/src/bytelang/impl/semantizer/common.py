@@ -25,6 +25,13 @@ def _test():
     from bytelang.impl.registry.immediate import MutableImmediateRegistry
     from rustpy.exceptions import Panic
     from bytelang.impl.serializer.primitive import u8
+    from bytelang.impl.profiles.type import PrimitiveTypeProfile
+    from bytelang.impl.node.program import Program
+    from bytelang.impl.parser.common import CommonParser
+    from bytelang.core.stream import OutputStream
+    from bytelang.core.lexer import Lexer
+    from bytelang.core.tokens import TokenType
+    from io import StringIO
 
     code = """
     .struct MyStruct { foo: u8 }
@@ -36,16 +43,9 @@ def _test():
 
     try:
 
-        from bytelang.core.lexer import Lexer
-        from bytelang.core.tokens import TokenType
-        from io import StringIO
         tokens = Lexer(TokenType.build_regex()).run(StringIO(code)).unwrap()
         print(tokens)
-        from bytelang.impl.profiles.type import PrimitiveTypeProfile
 
-        from bytelang.impl.node.program import Program
-        from bytelang.impl.parser.common import CommonParser
-        from bytelang.core.stream import OutputStream
         program = Program.parse(CommonParser(OutputStream(tuple(tokens)))).unwrap()
         print(program)
 
