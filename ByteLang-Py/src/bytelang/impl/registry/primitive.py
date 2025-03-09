@@ -1,7 +1,7 @@
 from typing import Iterable
 
 from bytelang.impl.registry.immediate import ImmediateRegistry
-from bytelang.impl.serializer.primitive import Primitive
+from bytelang.impl.serializer.primitive import PrimitiveSerializer
 from bytelang.impl.serializer.primitive import f32
 from bytelang.impl.serializer.primitive import f64
 from bytelang.impl.serializer.primitive import i16
@@ -14,16 +14,16 @@ from bytelang.impl.serializer.primitive import u64
 from bytelang.impl.serializer.primitive import u8
 
 
-class PrimitiveRegistry(ImmediateRegistry[str, Primitive]):
+class PrimitiveRegistry(ImmediateRegistry[str, PrimitiveSerializer]):
 
     def __init__(self) -> None:
         super().__init__(self._getItems())
 
     @staticmethod
-    def _getPrimitives() -> Iterable[Primitive]:
+    def _getPrimitives() -> Iterable[PrimitiveSerializer]:
         return i8, u8, i16, u16, i32, u32, i64, u64, f32, f64
 
-    def _getItems(self) -> Iterable[tuple[str, Primitive]]:
+    def _getItems(self) -> Iterable[tuple[str, PrimitiveSerializer]]:
         return ((p.__str__(), p) for p in self._getPrimitives())
 
 

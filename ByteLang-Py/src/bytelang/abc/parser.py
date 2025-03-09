@@ -10,7 +10,7 @@ from bytelang.abc.node import Node
 from bytelang.core.stream import OutputStream
 from bytelang.core.tokens import Token
 from bytelang.core.tokens import TokenType
-from bytelang.core.result import MultipleErrorsResult
+from bytelang.core.result import MultiErrorResult
 from bytelang.core.result import Result
 from bytelang.core.result import ResultAccumulator
 from bytelang.core.result import SingleResult
@@ -50,6 +50,7 @@ class Parser[Stmt: Node](ABC):
         """
 
         if self.tokens.peek().type == terminator:
+            self.tokens.next()
             return SingleResult.ok(())
 
         resulter: ResultAccumulator[T, str] = ResultAccumulator()
@@ -88,7 +89,7 @@ class Parser[Stmt: Node](ABC):
         :return: Последовательность узлов согласно функции парсера элементов
         """
 
-        ret = MultipleErrorsResult()
+        ret = MultiErrorResult()
 
         ret.putSingle(self.consume(brace_open))
         args = ret.putMulti(self.arguments(element_parser, delimiter, brace_close))

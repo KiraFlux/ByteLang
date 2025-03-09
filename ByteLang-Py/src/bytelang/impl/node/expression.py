@@ -8,14 +8,12 @@ from dataclasses import dataclass
 from typing import Iterable
 from typing import Mapping
 from typing import Optional
-from typing import Sequence
 
 from bytelang.abc.parser import Parser
+from bytelang.abc.profiles import RValueProfile
 from bytelang.abc.registry import Registry
 from bytelang.core.ops import Operator
-from bytelang.core.profile.macro import MacroProfile
-from bytelang.core.profile.rvalue import RValueProfile
-from bytelang.core.result import MultipleErrorsResult
+from bytelang.core.result import MultiErrorResult
 from bytelang.core.result import Result
 from bytelang.core.result import SingleResult
 from bytelang.core.tokens import TokenType
@@ -70,33 +68,19 @@ class Identifier(Expression):
 
 
 @dataclass(frozen=True)
-class MacroProfileImpl(MacroProfile[Expression]):
-    """Реализация профиля макроса"""
-
-    arguments: Sequence[Identifier]
-    template: Expression
-
-    def expand(self, arguments: Sequence[Expression]) -> Result[Expression, str]:
-        if (len_got := len(arguments)) != (len_expected := len(self.arguments)):
-            return SingleResult.error(f"Expected: {len_expected} ({self.arguments}), got: {len_got} ({arguments})")
-
-        return SingleResult.ok(self.template.expand({key: expr for key, expr in zip(self.arguments, arguments)}))
-
-
-@dataclass(frozen=True)
-class Literal(Expression):
+class Literal[T](Expression):
     """Узел Литерала"""
 
-    value: RValueProfile
+    value: RValueProfile[T]
     """Значение"""
 
     def expand(self, table: Mapping[Identifier, Expression]) -> Expression:
         return self
 
     @classmethod
-    def parse(cls, parser: Parser) -> Result[Literal, Iterable[str]]:
+    def parse(cls, parser: Parser) -> Result[Literal[T], Iterable[str]]:
         """Парсинг токена в узел Литерала"""
-        ret = MultipleErrorsResult()
+        ret = MultiErrorResult()
         token = parser.tokens.next()
 
         if (rv_maker := token.type.getRightValueMaker()) is None:
@@ -104,7 +88,7 @@ class Literal(Expression):
 
         return ret.make(lambda: cls(rv_maker(token.value)))
 
-    def accept(self, context: CommonSemanticContext) -> Result[RValueProfile, Iterable[str]]:
+    def accept(self, context: CommonSemanticContext) -> Result[RValueProfile[T], Iterable[str]]:
         return SingleResult.ok(self.value)
 
 
@@ -129,7 +113,7 @@ class UnaryOp(Expression):
 
         return Expression.parse(parser).map(lambda expr: cls(operator, expr))
 
-    def accept(self, context: CommonSemanticContext) -> Result[RValueProfile, Iterable[str]]:
+    def accept[T](self, context: CommonSemanticContext) -> Result[RValueProfile[T], Iterable[str]]:
         if (rv := self.operand.accept(context)).isError():
             return rv
 
@@ -151,7 +135,7 @@ class BinaryOp(Expression):
         return BinaryOp(self.op, self.left.expand(table), self.right.expand(table))
 
     def accept(self, context: CommonSemanticContext) -> Result[RValueProfile, Iterable[str]]:
-        ret = MultipleErrorsResult()
+        ret = MultiErrorResult()
 
         a = ret.putMulti(self.left.accept(context))
         b = ret.putMulti(self.right.accept(context))
@@ -213,7 +197,7 @@ class MacroCall(Expression, HasExistingID):
 
     @classmethod
     def parse(cls, parser: Parser) -> Result[MacroCall, Iterable[str]]:
-        ret = MultipleErrorsResult()
+        ret = MultiErrorResult()
 
         _id = ret.putSingle(parser.consume(TokenType.MacroCall))
         args = ret.putMulti(parser.braceArguments(lambda: Expression.parse(parser), TokenType.OpenRound, TokenType.CloseRound))

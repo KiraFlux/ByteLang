@@ -1,10 +1,10 @@
 from dataclasses import dataclass
 
+from bytelang.abc.profiles import MacroProfile
+from bytelang.abc.profiles import RValueProfile
+from bytelang.abc.profiles import TypeProfile
 from bytelang.abc.registry import MutableRegistry
 from bytelang.abc.semantic import SemanticContext
-from bytelang.core.profile.macro import MacroProfile
-from bytelang.core.profile.rvalue import RValueProfile
-from bytelang.core.profile.type import TypeProfile
 
 
 @dataclass
@@ -22,37 +22,46 @@ class CommonSemanticContext(SemanticContext):
 
 
 def _test():
-    from rustpy.exceptions import Panic
-    from bytelang.impl.node.program import Program
     from bytelang.impl.registry.immediate import MutableImmediateRegistry
-    from bytelang.core.stream import OutputStream
-    from bytelang.core.lexer import Lexer
-    from bytelang.core.tokens import TokenType
-    from io import StringIO
-    from bytelang.impl.parser.common import CommonParser
+    from rustpy.exceptions import Panic
+    from bytelang.impl.serializer.primitive import u8
 
     code = """
-    .struct MyStruct { foo: *u8, bar: [10][5]u8 } 
+    .struct MyStruct { foo: u8 }
     """
+
+    def _pr(title: str, reg: MutableRegistry):
+        print(f"{f" {title} ({len(tuple(reg.getItems()))}) ":-^40}")
+        print("\n".join(map(str, reg.getItems())))
 
     try:
 
+        from bytelang.core.lexer import Lexer
+        from bytelang.core.tokens import TokenType
+        from io import StringIO
         tokens = Lexer(TokenType.build_regex()).run(StringIO(code)).unwrap()
         print(tokens)
+        from bytelang.impl.profiles.type import PrimitiveTypeProfile
 
+        from bytelang.impl.node.program import Program
+        from bytelang.impl.parser.common import CommonParser
+        from bytelang.core.stream import OutputStream
         program = Program.parse(CommonParser(OutputStream(tuple(tokens)))).unwrap()
         print(program)
 
         context = CommonSemanticContext(
-            MutableImmediateRegistry(()),
-            MutableImmediateRegistry(()),
-            MutableImmediateRegistry(()),
+            macro_registry=MutableImmediateRegistry(()),
+            type_registry=MutableImmediateRegistry((
+                ("u8", PrimitiveTypeProfile(u8)),
+            )),
+            const_registry=MutableImmediateRegistry(()),
         )
 
-        # program.accept(context).unwrap()
+        program.accept(context).unwrap()
 
-        print("\n".join(map(str, context.const_registry.getItems())))
-        print("\n".join(map(str, context.macro_registry.getItems())))
+        _pr("Constants", context.const_registry)
+        _pr("Macro", context.macro_registry)
+        _pr("Types", context.type_registry)
 
     except Panic as e:
         print(e)

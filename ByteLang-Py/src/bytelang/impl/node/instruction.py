@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Iterable
 
 from bytelang.abc.parser import Parser
-from bytelang.core.result import MultipleErrorsResult
+from bytelang.core.result import MultiErrorResult
 from bytelang.core.result import Result
 from bytelang.core.tokens import TokenType
 from bytelang.impl.node.expression import Expression
@@ -22,7 +22,7 @@ class InstructionCall(Statement[SourceSemanticContext], HasExistingID, HasUnique
     """Узел вызова инструкции"""
 
     def accept(self, context: SourceSemanticContext) -> Result[None, Iterable[str]]:
-        ret = MultipleErrorsResult()
+        ret = MultiErrorResult()
         pass  # TODO # TODO push to write stream (read / write streams)
 
         # ret.putOptionalError(self.checkIdentifier())
@@ -32,7 +32,7 @@ class InstructionCall(Statement[SourceSemanticContext], HasExistingID, HasUnique
     @classmethod
     def parse(cls, parser: Parser) -> Result[InstructionCall, Iterable[str]]:
         """Парсинг инструкций"""
-        ret = MultipleErrorsResult()
+        ret = MultiErrorResult()
 
         _id = ret.putSingle(Identifier.parse(parser))
         args = ret.putMulti(parser.arguments(lambda: Expression.parse(parser), TokenType.Comma, TokenType.StatementEnd))

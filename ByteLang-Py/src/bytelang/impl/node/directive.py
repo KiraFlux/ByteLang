@@ -7,7 +7,7 @@ from typing import Iterable
 
 from bytelang.abc.parser import Parser
 from bytelang.abc.semantic import SemanticContext
-from bytelang.core.result import MultipleErrorsResult
+from bytelang.core.result import MultiErrorResult
 from bytelang.core.result import Result
 from bytelang.core.result import ResultAccumulator
 from bytelang.core.result import SingleResult
@@ -17,9 +17,11 @@ from bytelang.impl.node.expression import Expression
 from bytelang.impl.node.expression import HasExistingID
 from bytelang.impl.node.expression import HasUniqueID
 from bytelang.impl.node.expression import Identifier
-from bytelang.impl.node.expression import MacroProfileImpl
 from bytelang.impl.node.statement import Statement
 from bytelang.impl.node.type import Field
+from bytelang.impl.node.type import TypeNode
+from bytelang.impl.profiles.macro import MacroProfileImpl
+from bytelang.impl.profiles.type import StructTypeProfile
 from bytelang.impl.semantizer.common import CommonSemanticContext
 from bytelang.impl.semantizer.package import PackageSemanticContext
 from bytelang.impl.semantizer.source import SourceSemanticContext
@@ -27,6 +29,11 @@ from bytelang.impl.semantizer.source import SourceSemanticContext
 
 class Directive[S: SemanticContext](Statement[S], ABC):
     """Узел Директивы"""
+
+    @classmethod
+    @abstractmethod
+    def getIdentifier(cls) -> str:
+        """Получить идентификатор директивы"""
 
 
 class CommonDirective(Directive[CommonSemanticContext], ABC):
@@ -60,8 +67,12 @@ class ConstDefine(CommonDirective, HasUniqueID):
     expression: Expression
     """Выражение значения"""
 
+    @classmethod
+    def getIdentifier(cls) -> str:
+        return "const"
+
     def accept(self, context: CommonSemanticContext) -> Result[None, Iterable[str]]:
-        ret = MultipleErrorsResult()
+        ret = MultiErrorResult()
 
         ret.putOptionalError(self.checkIdentifier(context.const_registry))
         expr_value = ret.putMulti(self.expression.accept(context))
@@ -73,7 +84,7 @@ class ConstDefine(CommonDirective, HasUniqueID):
 
     @classmethod
     def parse(cls, parser: Parser) -> Result[Directive, Iterable[str]]:
-        ret = MultipleErrorsResult()
+        ret = MultiErrorResult()
 
         _id = ret.putSingle(Identifier.parse(parser))
         ret.putSingle(parser.consume(TokenType.Assignment))
@@ -83,29 +94,66 @@ class ConstDefine(CommonDirective, HasUniqueID):
 
 
 @dataclass(frozen=True)
-class StructDefine(CommonDirective, HasUniqueID, HasUniqueArguments[Field]):
-    """Узел определения структурного типа"""
+class TypeAliasDefine(CommonDirective, HasUniqueID):
+    """Узел определение псевдонима типа"""
 
-    def accept(self, context: CommonSemanticContext) -> Result[None, Iterable[str]]:
-        ret = ResultAccumulator()
+    type: TypeNode
 
-        ret.putOptionalError(self.checkIdentifier(context.type_registry))
-        ret.putMulti(self.checkArguments())
-
-        if ret.isOk():
-            fi = ret.unwrap()
-            context.type_registry.register(self.identifier.id, NotImplemented)  # TODO реализовать (StructProfile (TypeProfile) )
-
-        return ret.map(lambda _: None)
+    @classmethod
+    def getIdentifier(cls) -> str:
+        return "type"
 
     @classmethod
     def parse(cls, parser: Parser) -> Result[Directive, Iterable[str]]:
-        ret = MultipleErrorsResult()
+        ret = MultiErrorResult()
+
+        _id = ret.putMulti(Identifier.parse(parser))
+        ret.putSingle(parser.consume(TokenType.Assignment))
+        _type = ret.putMulti(TypeNode.parse(parser))
+
+        return ret.make(lambda: cls(_id.unwrap(), _type.unwrap()))
+
+    def accept(self, context: CommonSemanticContext) -> Result[None, Iterable[str]]:
+        ret = MultiErrorResult()
+
+        ret.putOptionalError(self.checkIdentifier(context.type_registry))
+        profile = ret.putMulti(self.type.accept(context))
+
+        return ret.make(lambda: context.type_registry.register(self.identifier.id, profile.unwrap()))
+
+
+@dataclass(frozen=True)
+class StructDefine(CommonDirective, HasUniqueID, HasUniqueArguments[Field]):
+    """Узел определения структурного типа"""
+
+    @classmethod
+    def getIdentifier(cls) -> str:
+        return "struct"
+
+    @classmethod
+    def parse(cls, parser: Parser) -> Result[Directive, Iterable[str]]:
+        ret = MultiErrorResult()
 
         _id = ret.putSingle(Identifier.parse(parser))
         fields = ret.putMulti(parser.braceArguments(lambda: Field.parse(parser), TokenType.OpenFigure, TokenType.CloseFigure))
 
         return ret.make(lambda: cls(fields.unwrap(), _id.unwrap()))
+
+    def accept(self, context: CommonSemanticContext) -> Result[None, Iterable[str]]:
+        ret2 = MultiErrorResult()
+
+        ret2.putOptionalError(self.checkIdentifier(context.type_registry))
+        ret2.putMulti(self.checkArguments())
+
+        if ret2.isError():
+            return ret2.make(lambda: None)
+
+        ret = ResultAccumulator()
+
+        for field in self.arguments:
+            ret.putMulti(field.accept(context))
+
+        return ret.map(lambda _: context.type_registry.register(self.identifier.id, StructTypeProfile(dict(ret.unwrap()))))
 
 
 @dataclass(frozen=True)
@@ -115,18 +163,13 @@ class MacroDefine(CommonDirective, HasUniqueID, HasUniqueArguments[Identifier]):
     template: Expression
     """Выражение, в которое развертывается макрос"""
 
-    def accept(self, context: CommonSemanticContext) -> Result[None, Iterable[str]]:
-        ret = ResultAccumulator()
-        ret.putMulti(self.checkArguments())
-
-        if ret.isOk():
-            context.macro_registry.register(self.identifier.id, MacroProfileImpl(self.arguments, self.template))
-
-        return ret.map(lambda _: None)
+    @classmethod
+    def getIdentifier(cls) -> str:
+        return "macro"
 
     @classmethod
     def parse(cls, parser: Parser) -> Result[Directive, Iterable[str]]:
-        ret = MultipleErrorsResult()
+        ret = MultiErrorResult()
 
         _id = ret.putSingle(Identifier.parse(parser))
         args = ret.putMulti(parser.braceArguments(lambda: Identifier.parse(parser), TokenType.OpenRound, TokenType.CloseRound))
@@ -135,36 +178,57 @@ class MacroDefine(CommonDirective, HasUniqueID, HasUniqueArguments[Identifier]):
 
         return ret.make(lambda: cls(args.unwrap(), _id.unwrap(), expr.unwrap()))
 
+    def accept(self, context: CommonSemanticContext) -> Result[None, Iterable[str]]:
+        ret = MultiErrorResult()
+
+        ret.putMulti(self.checkArguments())
+
+        return ret.make(lambda: context.macro_registry.register(self.identifier.id, MacroProfileImpl(tuple(self.arguments), self.template)))
+
 
 @dataclass(frozen=True)
 class InstructionDefine(PackageDirective, HasUniqueID, HasUniqueArguments[Field]):
     """Узел определения структуры"""
 
+    @classmethod
+    def getIdentifier(cls) -> str:
+        return "inst"
+
     # TODO решить как будет работать Field
-    def accept(self, context: PackageSemanticContext) -> Result[None, Iterable[str]]:
-        ret = ResultAccumulator()
-
-        ret.putOptionalError(self.checkIdentifier(NotImplemented))
-        ret.putMulti(self.checkArguments())
-
-        return ret.map(lambda _: None)
-
     @classmethod
     def parse(cls, parser: Parser) -> Result[Directive, Iterable[str]]:
-        ret = MultipleErrorsResult()
+        ret = MultiErrorResult()
 
         _id = ret.putSingle(Identifier.parse(parser))
         args = ret.putMulti(parser.braceArguments(lambda: Field.parse(parser), TokenType.OpenRound, TokenType.CloseRound))
 
         return ret.make(lambda: cls(args.unwrap(), _id.unwrap()))
 
+    def accept(self, context: PackageSemanticContext) -> Result[None, Iterable[str]]:
+        ret = ResultAccumulator()
+
+        ret.putOptionalError(self.checkIdentifier(NotImplemented))
+        ret.putMulti(self.checkArguments())
+
+        raise NotImplementedError
+
+        # return ret.map(lambda _: None)
+
 
 @dataclass(frozen=True)
 class EnvSelect(SourceDirective, HasExistingID):
     """Директива выбора окружения"""
 
+    @classmethod
+    def getIdentifier(cls) -> str:
+        return "env"
+
+    @classmethod
+    def parse(cls, parser: Parser) -> Result[Directive, Iterable[str]]:
+        return Identifier.parse(parser).map(lambda ok: cls(ok))
+
     def accept(self, context: SourceSemanticContext) -> Result[None, Iterable[str]]:
-        ret = MultipleErrorsResult()
+        ret = MultiErrorResult()
 
         if context.selected_environment is not None:
             ret.putOptionalError(f"Env already selected: {context.selected_environment}")
@@ -176,14 +240,18 @@ class EnvSelect(SourceDirective, HasExistingID):
 
         return ret.make(lambda: None)
 
-    @classmethod
-    def parse(cls, parser: Parser) -> Result[Directive, Iterable[str]]:
-        return Identifier.parse(parser).map(lambda ok: cls(ok))
-
 
 @dataclass(frozen=True)
 class MarkDefine(SourceDirective, HasUniqueID):
     """Узел определения метки"""
+
+    @classmethod
+    def getIdentifier(cls) -> str:
+        return "mark"
+
+    @classmethod
+    def parse(cls, parser: Parser) -> Result[Directive, Iterable[str]]:
+        return Identifier.parse(parser).map(lambda ok: cls(ok))
 
     def accept(self, context: SourceSemanticContext) -> Result[None, Iterable[str]]:
         err = self.checkIdentifier(NotImplemented)
@@ -192,7 +260,3 @@ class MarkDefine(SourceDirective, HasUniqueID):
             return SingleResult.error(err)
 
         return SingleResult.ok(None)
-
-    @classmethod
-    def parse(cls, parser: Parser) -> Result[Directive, Iterable[str]]:
-        return Identifier.parse(parser).map(lambda ok: cls(ok))

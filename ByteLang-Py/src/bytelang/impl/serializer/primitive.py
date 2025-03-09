@@ -1,8 +1,13 @@
+import struct
 from itertools import chain
+from struct import error as StructError
+from typing import Callable
 from typing import Final
 from typing import Iterable
 
 from bytelang.abc.serializer import Serializer
+from bytelang.core.result import Result
+from bytelang.core.result import SingleResult
 
 
 class _Format:
@@ -55,28 +60,47 @@ class _Format:
         raise ValueError(fmt)
 
 
-class Primitive[T](Serializer[T]):
+class PrimitiveSerializer[T: (int, float)](Serializer[T]):
     """Примитивные типы"""
 
-    def pack(self, value: T) -> bytes:
-        return self._struct.pack(value)
+    type Value = T
 
-    def unpack(self, buffer: bytes) -> T:
-        return self._struct.unpack(buffer)[0]
+    def __init__(self, _format: str) -> None:
+        self._struct = struct.Struct(f"<{_format}")
 
-    def __str__(self) -> str:
-        return f"{_Format.matchPrefix(self.getFormat())}{self.getSize() * 8}"
+    def getSize(self) -> int:
+        return self._struct.size
+
+    def unpack(self, buffer: bytes) -> Result[T, Iterable[str]]:
+        return self._structResultWrapper(buffer, lambda _b: self._struct.unpack(_b)[0])
+
+    def pack(self, value: T) -> Result[bytes, Iterable[str]]:
+        return self._structResultWrapper(value, self._struct.pack)
+
+    def __repr__(self) -> str:
+        return f"{_Format.matchPrefix(self._struct.format.strip("<>"))}{self.getSize() * 8}"
+
+    @staticmethod
+    def _structResultWrapper[F, T](_from: F, from_to_func: Callable[[F], T]) -> Result[T, Iterable[str]]:
+        try:
+            _to = from_to_func(_from)
+
+        except StructError as e:
+            return SingleResult.error((f"Primitive error: {e} ({_from})",))
+
+        else:
+            return SingleResult.ok(_to)
 
 
-u8 = Primitive[int | bool](_Format.U8)
-u16 = Primitive[int](_Format.U16)
-u32 = Primitive[int](_Format.U32)
-u64 = Primitive[int](_Format.U64)
+u8 = PrimitiveSerializer[int | bool](_Format.U8)
+u16 = PrimitiveSerializer[int](_Format.U16)
+u32 = PrimitiveSerializer[int](_Format.U32)
+u64 = PrimitiveSerializer[int](_Format.U64)
 
-i8 = Primitive[int](_Format.I8)
-i16 = Primitive[int](_Format.I16)
-i32 = Primitive[int](_Format.I32)
-i64 = Primitive[int](_Format.I64)
+i8 = PrimitiveSerializer[int](_Format.I8)
+i16 = PrimitiveSerializer[int](_Format.I16)
+i32 = PrimitiveSerializer[int](_Format.I32)
+i64 = PrimitiveSerializer[int](_Format.I64)
 
-f32 = Primitive[float](_Format.F32)
-f64 = Primitive[float](_Format.F64)
+f32 = PrimitiveSerializer[float](_Format.F32)
+f64 = PrimitiveSerializer[float](_Format.F64)

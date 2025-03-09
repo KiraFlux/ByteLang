@@ -2,7 +2,6 @@ from typing import Final
 from typing import Iterable
 from typing import Optional
 
-from bytelang.abc.parser import Parsable
 from bytelang.abc.parser import Parser
 from bytelang.core.result import Result
 from bytelang.core.result import SingleResult
@@ -13,6 +12,7 @@ from bytelang.impl.node.directive import ConstDefine
 from bytelang.impl.node.directive import Directive
 from bytelang.impl.node.directive import MacroDefine
 from bytelang.impl.node.directive import StructDefine
+from bytelang.impl.node.directive import TypeAliasDefine
 from bytelang.impl.node.statement import Statement
 from bytelang.impl.registry.immediate import ImmediateRegistry
 
@@ -21,17 +21,22 @@ class CommonParser(Parser[Statement]):
     """Общий парсер"""
 
     @classmethod
-    def getDirectives(cls) -> Iterable[tuple[str, type[Parsable[Directive]]]]:
+    def getDirectives(cls) -> Iterable[type[Directive]]:
         """Получить директивы"""
         return (
-            ("const", ConstDefine),
-            ("struct", StructDefine),
-            ("macro", MacroDefine)
+            ConstDefine,
+            StructDefine,
+            MacroDefine,
+            TypeAliasDefine
         )
 
     def __init__(self, stream: OutputStream[Token]) -> None:
         super().__init__(stream)
-        self.directive_registry: Final[ImmediateRegistry[str, type[Parsable[Directive]]]] = ImmediateRegistry(self.getDirectives())
+
+        self.directive_registry: Final[ImmediateRegistry[str, type[Directive]]] = ImmediateRegistry((
+            (d.getIdentifier(), d)
+            for d in self.getDirectives()
+        ))
 
     def _directive(self) -> Result[Directive, Iterable[str]]:
         """Парсинг директивы"""

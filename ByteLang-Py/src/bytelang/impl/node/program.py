@@ -6,7 +6,7 @@ from typing import Sequence
 
 from bytelang.abc.parser import Parser
 from bytelang.abc.semantic import SemanticContext
-from bytelang.core.result import MultipleErrorsResult
+from bytelang.core.result import MultiErrorResult
 from bytelang.core.result import Result
 from bytelang.core.result import ResultAccumulator
 from bytelang.impl.node.statement import Statement
@@ -21,7 +21,7 @@ class Program[S: SemanticContext](SuperNode[S, None, "Program"]):
     """Statements"""
 
     def accept(self, context: S) -> Result[None, Iterable[str]]:
-        ret = MultipleErrorsResult()
+        ret = MultiErrorResult()
 
         for statement in self.statements:
             ret.putMulti(statement.accept(context))

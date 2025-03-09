@@ -6,10 +6,10 @@ from enum import auto
 from typing import Callable
 from typing import Optional
 
+from bytelang.abc.profiles import RValueProfile
 from bytelang.core.ops import Operator
-from bytelang.core.profile.rvalue import FloatRV
-from bytelang.core.profile.rvalue import IntegerRV
-from bytelang.core.profile.rvalue import RValueProfile
+from bytelang.impl.profiles.rvalue import FloatRV
+from bytelang.impl.profiles.rvalue import IntegerRV
 
 type _Value = str | int | float | None
 

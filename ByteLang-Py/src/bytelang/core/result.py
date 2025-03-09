@@ -102,7 +102,7 @@ class SingleResult[T, E](Result[T, E]):
 
 # TODO Iterable[E] -> Stream
 
-class MultipleErrorsResult[T, E](Result[T, Iterable[E]]):
+class MultiErrorResult[T, E](Result[T, Iterable[E]]):
 
     def __init__(self) -> None:
         # TODO stream
