@@ -57,12 +57,16 @@ def _test():
     from bytelang.impl.parser.env import EnvironmentParser
     from bytelang.impl.semantizer.package import PackageSemanticContext
     from bytelang.impl.registry.primitive import PrimitiveRegistry
+    from bytelang.core.lexer import Lexer
+    from bytelang.core.tokens import TokenType
+    from bytelang.core.loader import Loader
 
     from rustpy.exceptions import Panic
-
     from pathlib import Path
 
-    path = Path(r"A:\Projects\ByteLang\ByteLang-Py\res\test")
+    root_path = Path(r"A:\Projects\ByteLang\ByteLang-Py\res")
+
+    _lexer = Lexer(TokenType.build_regex())
 
     _primitive_registry = PrimitiveRegistry()
 
@@ -76,33 +80,39 @@ def _test():
     )
 
     package_loader = CodeLoadingRegistry[PackageBundle, PackageSemanticContext](
-        path,
-        _common_context,
-        lambda tokens: PackageParser(tokens),
-        lambda context: PackageSemanticContext(
-            macro_registry=context.macro_registry,
-            type_registry=context.type_registry,
-            const_registry=context.const_registry,
-            instruction_registry=MutableImmediateRegistry(())
+        root_path / "packages",
+        Loader(
+            _lexer,
+            _common_context,
+            lambda tokens: PackageParser(tokens),
+            lambda context: PackageSemanticContext(
+                macro_registry=context.macro_registry,
+                type_registry=context.type_registry,
+                const_registry=context.const_registry,
+                instruction_registry=MutableImmediateRegistry(())
+            )
         )
     )
 
     env_loader = CodeLoadingRegistry[EnvironmentBundle, EnvironmentSemanticContext](
-        path,
-        _common_context,
-        lambda tokens: EnvironmentParser(tokens),
-        lambda context: EnvironmentSemanticContext(
-            macro_registry=context.macro_registry,
-            type_registry=context.type_registry,
-            const_registry=context.const_registry,
-            package_registry=package_loader,
-            instruction_registry=MutableImmediateRegistry(()),
-            primitive_serializers_registry=_primitive_registry
+        root_path / "envs",
+        Loader(
+            _lexer,
+            _common_context,
+            lambda tokens: EnvironmentParser(tokens),
+            lambda context: EnvironmentSemanticContext(
+                macro_registry=context.macro_registry,
+                type_registry=context.type_registry,
+                const_registry=context.const_registry,
+                package_registry=package_loader,
+                instruction_registry=MutableImmediateRegistry(()),
+                primitive_serializers_registry=_primitive_registry
+            )
         )
     )
 
     def _pr(title: str, reg: Registry):
-        print(f"{f" {title} ({len(tuple(reg.getItems()))}) ":-^40}")
+        print(f"{f" <<< {title} : {len(tuple(reg.getItems()))} >>> ":-^40}")
         print("\n".join(map(str, reg.getItems())))
 
     try:
