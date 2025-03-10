@@ -65,9 +65,12 @@ def _test():
 
         package_code = """
         .type u8_array = [10]u8
+        .struct Point {x: f32, y: f32}
         
-        .inst foo(a: u8, b: *u8)
+        .inst foo(a: u8, b: *u64)
         .inst bar(array: u8_array)
+        .inst go(p: *Point)
+        
         """
 
         _primitive_registry = PrimitiveRegistry()
@@ -95,8 +98,7 @@ def _test():
 
         env_code = """
         
-        .use package{bar}
-        .use package{foo}
+        .use package
         """
 
         env_context = _process(env_code, EnvironmentParser, EnvironmentSemanticContext(
