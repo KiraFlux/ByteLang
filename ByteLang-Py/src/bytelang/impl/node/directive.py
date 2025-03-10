@@ -4,6 +4,7 @@ from abc import ABC
 from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Iterable
+from typing import Optional
 
 from bytelang.abc.parser import Parser
 from bytelang.abc.profiles import PackageInstructionProfile
@@ -24,6 +25,7 @@ from bytelang.impl.node.type import TypeNode
 from bytelang.impl.profiles.macro import MacroProfileImpl
 from bytelang.impl.profiles.type import StructTypeProfile
 from bytelang.impl.semantizer.common import CommonSemanticContext
+from bytelang.impl.semantizer.env import EnvironmentSemanticContext
 from bytelang.impl.semantizer.package import PackageSemanticContext
 from bytelang.impl.semantizer.source import SourceSemanticContext
 
@@ -50,6 +52,14 @@ class PackageDirective(Directive[PackageSemanticContext], ABC):
 
     @abstractmethod
     def accept(self, context: PackageSemanticContext) -> Result[None, Iterable[str]]:
+        pass
+
+
+class EnvironmentDirective(Directive[EnvironmentSemanticContext], ABC):
+    """Директива, исполняемая в файлах конфигурации окружения"""
+
+    @abstractmethod
+    def accept(self, context: EnvironmentSemanticContext) -> Result[None, Iterable[str]]:
         pass
 
 
@@ -218,6 +228,47 @@ class InstructionDefine(PackageDirective, HasUniqueID, HasUniqueArguments[Field]
             ret_1.putMulti(arg.accept(context))
 
         return ret_1.map(lambda fields: context.instruction_registry.register(self.identifier.id, PackageInstructionProfile(fields)))
+
+
+@dataclass(frozen=True)
+class UsePackage(EnvironmentDirective, HasExistingID):
+    """Выбрать пакет инструкций"""
+
+    selected_instructions: Optional[Iterable[Identifier]]
+
+    """
+    Выбранные инструкции для использования
+    None - используются все инструкции
+    
+    .use package
+    .use package{inst_1, inst_2}  
+    """
+
+    @classmethod
+    def getIdentifier(cls) -> str:
+        return "use"
+
+    @classmethod
+    def parse(cls, parser: Parser) -> Result[Directive, Iterable[str]]:
+        ret = MultiErrorResult()
+
+        _package = ret.putMulti(Identifier.parse(parser))
+        _instructions = ret.putMulti(cls._parseUsedInstructions(parser))
+
+        return ret.make(lambda: cls(_package.unwrap(), _instructions.unwrap()))
+
+    def accept(self, context: EnvironmentSemanticContext) -> Result[None, Iterable[str]]:
+        # пакет ещё не был загружен
+        # что пакет существует
+        # что выбранные инструкции существуют
+        pass
+
+    @classmethod
+    def _parseUsedInstructions(cls, parser: Parser) -> Result[Optional[Iterable[Identifier]], Iterable[str]]:
+        if parser.tokens.peek().type == TokenType.OpenFigure:
+            return parser.braceArguments(lambda: Identifier.parse(parser), TokenType.OpenFigure, TokenType.CloseFigure)
+
+        return SingleResult.ok(None)
 
 
 @dataclass(frozen=True)

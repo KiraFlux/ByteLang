@@ -72,3 +72,17 @@ class PackageInstructionProfile:
                 lambda e: f"arg {arg_id}: {arg_type_profile} fail pass value {arg_value} : {e}", errors)))
 
         return ret.map(lambda packed_args: b"".join(packed_args))
+
+
+@dataclass(frozen=True)
+class EnvironmentInstructionProfile[S: SemanticContext](ABC):
+    """Профиль инструкции окружения"""
+
+    _package_instruction: PackageInstructionProfile
+    """Основание инструкции - инструкция пакета"""
+    _index: int
+    """Индекс инструкции в таблице"""
+
+    @abstractmethod
+    def pack(self, arguments: Sequence[RValueProfile], context: S) -> Result[bytes, Iterable[str]]:
+        """Упаковка вызова инструкции"""

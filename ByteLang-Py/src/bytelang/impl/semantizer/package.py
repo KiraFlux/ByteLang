@@ -2,15 +2,24 @@ from dataclasses import dataclass
 
 from bytelang.abc.profiles import PackageInstructionProfile
 from bytelang.abc.registry import MutableRegistry
+from bytelang.core.bundle.package import PackageBundle
 from bytelang.impl.semantizer.common import CommonSemanticContext
 
 
-@dataclass
-class PackageSemanticContext(CommonSemanticContext):
+@dataclass(frozen=True)
+class PackageSemanticContext(CommonSemanticContext[PackageBundle]):
     """Семантический анализатор пакета"""
 
     instruction_registry: MutableRegistry[str, PackageInstructionProfile]
     """Реестр инструкций"""
+
+    def toBundle(self) -> PackageBundle:
+        return PackageBundle(
+            constants=self.const_registry,
+            marcos=self.macro_registry,
+            types=self.type_registry,
+            instructions=self.instruction_registry
+        )
 
 
 def _test():
