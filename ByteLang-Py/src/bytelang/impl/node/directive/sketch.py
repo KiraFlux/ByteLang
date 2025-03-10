@@ -9,24 +9,23 @@ from bytelang.abc.parser import Parser
 from bytelang.core.result import MultiErrorResult
 from bytelang.core.result import Result
 from bytelang.core.result import SingleResult
-from bytelang.core.result import SingleResult
 from bytelang.impl.node.directive.super import Directive
 from bytelang.impl.node.expression import HasExistingID
 from bytelang.impl.node.expression import HasUniqueID
 from bytelang.impl.node.expression import Identifier
-from bytelang.impl.semantizer.source import SourceSemanticContext
+from bytelang.impl.semantizer.source import SketchSemanticContext
 
 
-class SourceDirective(Directive[SourceSemanticContext], ABC):
-    """Директива, исполняемая в исполняемых скриптах"""
+class SourceDirective(Directive[SketchSemanticContext], ABC):
+    """Директива, исполняемая в скетче"""
 
     @abstractmethod
-    def accept(self, context: SourceSemanticContext) -> Result[None, Iterable[str]]:
+    def accept(self, context: SketchSemanticContext) -> Result[None, Iterable[str]]:
         pass
 
 
 @dataclass(frozen=True)
-class EnvSelect(SourceDirective, HasExistingID):
+class SelectEnvironment(SourceDirective, HasExistingID):
     """Директива выбора окружения"""
 
     @classmethod
@@ -37,7 +36,7 @@ class EnvSelect(SourceDirective, HasExistingID):
     def parse(cls, parser: Parser) -> Result[Directive, Iterable[str]]:
         return Identifier.parse(parser).map(lambda ok: cls(ok))
 
-    def accept(self, context: SourceSemanticContext) -> Result[None, Iterable[str]]:
+    def accept(self, context: SketchSemanticContext) -> Result[None, Iterable[str]]:
         ret = MultiErrorResult()
 
         if context.selected_environment is not None:
@@ -63,7 +62,7 @@ class MarkDefine(SourceDirective, HasUniqueID):
     def parse(cls, parser: Parser) -> Result[Directive, Iterable[str]]:
         return Identifier.parse(parser).map(lambda ok: cls(ok))
 
-    def accept(self, context: SourceSemanticContext) -> Result[None, Iterable[str]]:
+    def accept(self, context: SketchSemanticContext) -> Result[None, Iterable[str]]:
         err = self.checkIdentifier(NotImplemented)
 
         if err is None:

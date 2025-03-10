@@ -6,8 +6,8 @@ from bytelang.impl.semantizer.common import CommonSemanticContext
 
 
 @dataclass
-class SourceSemanticContext(CommonSemanticContext):
-    """Контекст семантического анализа исполняемого кода"""
+class SketchSemanticContext(CommonSemanticContext):
+    """Контекст семантического анализа скетча"""
 
     environment_registry: Registry[str, NotImplemented, NotImplemented]  # todo Env bundle
     """Реестр окружений"""

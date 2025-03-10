@@ -14,14 +14,14 @@ from bytelang.impl.node.expression import Identifier
 from bytelang.impl.node.statement import Statement
 from bytelang.impl.node.component import HasUniqueArguments
 from bytelang.impl.node.expression import HasExistingID
-from bytelang.impl.semantizer.source import SourceSemanticContext
+from bytelang.impl.semantizer.source import SketchSemanticContext
 
 
 @dataclass(frozen=True)
-class InstructionCall(Statement[SourceSemanticContext], HasExistingID, HasUniqueArguments[Expression]):
+class InstructionCall(Statement[SketchSemanticContext], HasExistingID, HasUniqueArguments[Expression]):
     """Узел вызова инструкции"""
 
-    def accept(self, context: SourceSemanticContext) -> Result[None, Iterable[str]]:
+    def accept(self, context: SketchSemanticContext) -> Result[None, Iterable[str]]:
         ret = MultiErrorResult()
         pass  # TODO # TODO push to write stream (read / write streams)
 

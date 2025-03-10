@@ -10,7 +10,7 @@ from bytelang.abc.serializer import Serializable
 from bytelang.core.result import Result
 from bytelang.core.result import ResultAccumulator
 from bytelang.core.result import SingleResult
-from bytelang.impl.semantizer.source import SourceSemanticContext
+from bytelang.impl.semantizer.source import SketchSemanticContext
 from bytelang.impl.serializer.primitive import PrimitiveSerializer
 
 
@@ -26,13 +26,13 @@ class PrimitiveTypeProfile[T: Serializable](TypeProfile[SemanticContext]):
 
 
 @dataclass(frozen=True)
-class PointerTypeProfile[T: Serializable](TypeProfile[SourceSemanticContext]):
+class PointerTypeProfile[T: Serializable](TypeProfile[SketchSemanticContext]):
     """Профиль указательного типа"""
 
     _pointer_type: TypeProfile
     """Профиль типа на который ведет указатель"""
 
-    def apply(self, rvalue: RValueProfile[T], context: SourceSemanticContext) -> Result[bytes, Iterable[str]]:
+    def apply(self, rvalue: RValueProfile[T], context: SketchSemanticContext) -> Result[bytes, Iterable[str]]:
         raise NotImplementedError
 
 
