@@ -14,7 +14,7 @@ from bytelang.impl.node.expression import Identifier
 from bytelang.impl.node.statement import Statement
 from bytelang.impl.node.component import HasUniqueArguments
 from bytelang.impl.node.expression import HasExistingID
-from bytelang.impl.semantizer.source import SketchSemanticContext
+from bytelang.impl.semantizer.sketch import SketchSemanticContext
 
 
 @dataclass(frozen=True)

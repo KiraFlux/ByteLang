@@ -10,7 +10,7 @@ from bytelang.abc.serializer import Serializable
 from bytelang.core.result import Result
 from bytelang.core.result import ResultAccumulator
 from bytelang.core.result import SingleResult
-from bytelang.impl.semantizer.source import SketchSemanticContext
+from bytelang.impl.semantizer.sketch import SketchSemanticContext
 from bytelang.impl.serializer.primitive import PrimitiveSerializer
 
 

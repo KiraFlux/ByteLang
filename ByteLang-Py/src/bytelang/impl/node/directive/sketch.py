@@ -13,7 +13,7 @@ from bytelang.impl.node.directive.super import Directive
 from bytelang.impl.node.expression import HasExistingID
 from bytelang.impl.node.expression import HasUniqueID
 from bytelang.impl.node.expression import Identifier
-from bytelang.impl.semantizer.source import SketchSemanticContext
+from bytelang.impl.semantizer.sketch import SketchSemanticContext
 
 
 class SourceDirective(Directive[SketchSemanticContext], ABC):
