@@ -5,6 +5,7 @@ from abc import abstractmethod
 from pathlib import Path
 from typing import Final
 from typing import Iterable
+from typing import Mapping
 from typing import Optional
 
 
@@ -25,6 +26,10 @@ class Registry[Key, Item](ABC):
     def getItems(self) -> Iterable[tuple[Key, Item]]:
         """Получить значения реестра"""
         return self._items.items()
+
+    def getMappingView(self) -> Mapping[Key, Item]:
+        """Получить вид на элементы"""
+        return self._items
 
 
 class MutableRegistry[Key, Item](Registry[Key, Item], ABC):

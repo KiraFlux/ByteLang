@@ -4,10 +4,13 @@ from abc import ABC
 from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Iterable
+from typing import Mapping
 from typing import Optional
 
 from bytelang.abc.parser import Parser
+from bytelang.abc.profiles import EnvironmentInstructionProfile
 from bytelang.abc.profiles import PackageInstructionProfile
+from bytelang.abc.registry import Registry
 from bytelang.abc.semantic import SemanticContext
 from bytelang.core.result import MultiErrorResult
 from bytelang.core.result import Result
@@ -258,10 +261,58 @@ class UsePackage(EnvironmentDirective, HasExistingID):
         return ret.make(lambda: cls(_package.unwrap(), _instructions.unwrap()))
 
     def accept(self, context: EnvironmentSemanticContext) -> Result[None, Iterable[str]]:
-        # пакет ещё не был загружен
         # что пакет существует
+        package_result = self.checkIdentifier(context.package_registry)
+
+        if package_result.isError():
+            return package_result.map(err=lambda e: (e,))
+
         # что выбранные инструкции существуют
-        pass
+        chosen_result = self._acceptChosenInstructions(package_result.unwrap().instructions)
+
+        if chosen_result.isError():
+            return chosen_result.flow()
+
+        env_result = self._acceptEnvInstructions(chosen_result.unwrap(), context)
+
+        if env_result.isError():
+            return env_result.flow()
+
+        ret = MultiErrorResult()
+
+        for env_inst_key, env_inst_value in env_result.unwrap().items():
+            if context.instruction_registry.has(env_inst_key):
+                ret.putOptionalError(f"{env_inst_key} already exist in {context}")
+            else:
+                context.instruction_registry.register(env_inst_key, env_inst_value)
+
+        return ret.make(lambda: None)
+
+    @staticmethod
+    def _acceptEnvInstructions(
+            package_instructions: Mapping[str, PackageInstructionProfile],
+            context: EnvironmentSemanticContext
+    ) -> Result[Mapping[str, EnvironmentInstructionProfile], Iterable[str]]:
+
+        ret = ResultAccumulator()
+
+        package_instruction_index_offset: int = len(context.instruction_registry.getMappingView())
+
+        for offset, (inst_key, package_inst) in enumerate(package_instructions.items()):
+            ret.putMulti(context.pointers.instruction_call_pointer.pack(package_instruction_index_offset + offset).map(lambda code: (inst_key, EnvironmentInstructionProfile(package_inst, code))))
+
+        return ret.map(lambda items: dict(items))
+
+    def _acceptChosenInstructions(self, instructions: Registry[str, PackageInstructionProfile]) -> Result[Mapping[str, PackageInstructionProfile], Iterable[str]]:
+        if self.selected_instructions is None:
+            return SingleResult.ok(instructions.getMappingView())
+
+        ret = ResultAccumulator()
+
+        for selected in self.selected_instructions:
+            ret.putSingle(SingleResult.fromOptional((selected.id, instructions.get(selected.id)), lambda: f"inst {selected} not found"))
+
+        return ret.map(lambda items: dict(items))
 
     @classmethod
     def _parseUsedInstructions(cls, parser: Parser) -> Result[Optional[Iterable[Identifier]], Iterable[str]]:

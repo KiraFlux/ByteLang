@@ -9,7 +9,7 @@ from bytelang.abc.registry import MutableRegistry
 from bytelang.abc.semantic import SemanticContext
 
 
-@dataclass(frozen=True)
+@dataclass
 class CommonSemanticContext[T](SemanticContext, ABC):
     """Контекст общего назначения"""
 

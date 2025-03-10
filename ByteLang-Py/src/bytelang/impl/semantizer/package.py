@@ -6,7 +6,7 @@ from bytelang.core.bundle.package import PackageBundle
 from bytelang.impl.semantizer.common import CommonSemanticContext
 
 
-@dataclass(frozen=True)
+@dataclass
 class PackageSemanticContext(CommonSemanticContext[PackageBundle]):
     """Семантический анализатор пакета"""
 
@@ -15,9 +15,6 @@ class PackageSemanticContext(CommonSemanticContext[PackageBundle]):
 
     def toBundle(self) -> PackageBundle:
         return PackageBundle(
-            constants=self.const_registry,
-            marcos=self.macro_registry,
-            types=self.type_registry,
             instructions=self.instruction_registry
         )
 

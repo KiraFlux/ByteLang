@@ -75,14 +75,14 @@ class PackageInstructionProfile:
 
 
 @dataclass(frozen=True)
-class EnvironmentInstructionProfile[S: SemanticContext](ABC):
+class EnvironmentInstructionProfile[S: SemanticContext]:
     """Профиль инструкции окружения"""
 
     _package_instruction: PackageInstructionProfile
     """Основание инструкции - инструкция пакета"""
-    _index: int
-    """Индекс инструкции в таблице"""
+    _code: bytes
+    """код инструкции в таблице"""
 
-    @abstractmethod
     def pack(self, arguments: Sequence[RValueProfile], context: S) -> Result[bytes, Iterable[str]]:
         """Упаковка вызова инструкции"""
+        return self._package_instruction.packArguments(arguments, context).map(lambda packed_arguments: self._code + packed_arguments)

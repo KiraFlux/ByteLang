@@ -1,36 +1,49 @@
+"""Контекст семантического анализа файла окружения"""
+
 from dataclasses import dataclass
 
+from bytelang.abc.profiles import EnvironmentInstructionProfile
 from bytelang.abc.registry import MutableRegistry
 from bytelang.core.bundle.env import EnvironmentBundle
 from bytelang.core.bundle.package import PackageBundle
+from bytelang.core.bundle.pointer import PointerBundle
 from bytelang.impl.semantizer.common import CommonSemanticContext
 
 
-@dataclass(frozen=True)
+@dataclass
 class EnvironmentSemanticContext(CommonSemanticContext[EnvironmentBundle]):
     """Контекст семантического анализа файла окружения"""
 
     package_registry: MutableRegistry[str, PackageBundle]
     """Реестр пакетов"""
 
+    instruction_registry: MutableRegistry[str, EnvironmentInstructionProfile]
+    """Реестр инструкций окружения"""
+
+    pointers: PointerBundle
+    """Набор указателей"""
+
     def toBundle(self) -> EnvironmentBundle:
         pass
 
 
 def _test():
-    from bytelang.impl.registry.immediate import MutableImmediateRegistry
-    from rustpy.exceptions import Panic
-    from bytelang.impl.serializer.primitive import u8
-    from bytelang.impl.profiles.type import PrimitiveTypeProfile
-    from bytelang.impl.node.program import Program
+    from io import StringIO
+
     from bytelang.core.stream import OutputStream
     from bytelang.core.lexer import Lexer
     from bytelang.core.tokens import TokenType
-    from io import StringIO
+    from bytelang.impl.node.program import Program
+    from bytelang.impl.registry.immediate import MutableImmediateRegistry
+    from bytelang.impl.serializer.primitive import u8
+    from bytelang.impl.serializer.primitive import u16
+    from bytelang.impl.serializer.primitive import i8
+    from bytelang.impl.profiles.type import PrimitiveTypeProfile
     from bytelang.impl.parser.common import CommonParser
     from bytelang.impl.parser.package import PackageParser
-    from bytelang.impl.semantizer.package import PackageSemanticContext
     from bytelang.impl.parser.env import EnvironmentParser
+    from bytelang.impl.semantizer.package import PackageSemanticContext
+    from rustpy.exceptions import Panic
 
     def _process[S: CommonSemanticContext](code: str, parser_cls: type[CommonParser], context: S) -> S:
         _tokens = Lexer(TokenType.build_regex()).run(StringIO(code)).unwrap()
@@ -49,8 +62,10 @@ def _test():
     try:
 
         package_code = """
+        .type u8_array = [10]u8
+        
         .inst foo(a: u8, b: *u8)
-        .inst bar(array: [10]u8)
+        .inst bar(array: u8_array)
         """
 
         _global_macros = MutableImmediateRegistry(())
@@ -66,14 +81,15 @@ def _test():
             instruction_registry=MutableImmediateRegistry(())
         ))
 
-        _pr("Constants", my_package.const_registry)
-        _pr("Macro", my_package.macro_registry)
-        _pr("Types", my_package.type_registry)
+        # _pr("Constants", my_package.const_registry)
+        # _pr("Macro", my_package.macro_registry)
+        # _pr("Types", my_package.type_registry)
         _pr("Instructions", my_package.instruction_registry)
 
         env_code = """
-        .type u8_array = [10]u8
-        .use package
+        
+        .use package{bar}
+        .use package{foo}
         """
 
         env_context = _process(env_code, EnvironmentParser, EnvironmentSemanticContext(
@@ -82,13 +98,20 @@ def _test():
             const_registry=_global_constants,
             package_registry=MutableImmediateRegistry((
                 ("package", my_package.toBundle()),
-            ))
+            )),
+            instruction_registry=MutableImmediateRegistry(()),
+            pointers=PointerBundle(
+                instruction_call_pointer=u8,
+                program_mark_pointer=u16,
+                data_section_pointer=i8
+            )
         ))
 
         _pr("Constants", env_context.const_registry)
         _pr("Macro", env_context.macro_registry)
         _pr("Types", env_context.type_registry)
         _pr("Packages", env_context.package_registry)
+        _pr("Instructions", env_context.instruction_registry)
 
     except Panic as e:
         print(e)
