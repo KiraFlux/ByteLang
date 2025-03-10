@@ -8,11 +8,11 @@ from bytelang.core.result import SingleResult
 from bytelang.core.stream import OutputStream
 from bytelang.core.tokens import Token
 from bytelang.core.tokens import TokenType
-from bytelang.impl.node.directive import ConstDefine
-from bytelang.impl.node.directive import Directive
-from bytelang.impl.node.directive import MacroDefine
-from bytelang.impl.node.directive import StructDefine
-from bytelang.impl.node.directive import TypeAliasDefine
+from bytelang.impl.node.directive.common import ConstDefine
+from bytelang.impl.node.directive.common import MacroDefine
+from bytelang.impl.node.directive.common import StructDefine
+from bytelang.impl.node.directive.common import TypeAliasDefine
+from bytelang.impl.node.directive.super import Directive
 from bytelang.impl.node.statement import Statement
 from bytelang.impl.registry.immediate import ImmediateRegistry
 
@@ -47,10 +47,12 @@ class CommonParser(Parser[Statement]):
         if (identifier := self.consume(TokenType.Directive)).isError():
             return identifier.flow(_f)
 
-        if (directive := self.directive_registry.get(identifier.unwrap().value)) is None:
+        directive = self.directive_registry.get(identifier.unwrap().value)
+
+        if directive.isError():
             return SingleResult.error((f"Не удалось найти директиву: {identifier}",))
 
-        node = directive.parse(self)
+        node = directive.unwrap().parse(self)
 
         if (token := self.consume(TokenType.StatementEnd)).isError():
             return token.flow(_f)

@@ -6,7 +6,7 @@ from bytelang.abc.serializer import Serializer
 
 
 @dataclass(frozen=True)
-class PointerBundle:
+class PointersBundle:
     """Набор указателей"""
 
     instruction_call_pointer: Serializer[int]

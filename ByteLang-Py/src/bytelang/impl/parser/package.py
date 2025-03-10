@@ -2,8 +2,8 @@
 from itertools import chain
 from typing import Iterable
 
-from bytelang.impl.node.directive import Directive
-from bytelang.impl.node.directive import InstructionDefine
+from bytelang.impl.node.directive.super import Directive
+from bytelang.impl.node.directive.package import InstructionDefine
 from bytelang.impl.parser.common import CommonParser
 
 

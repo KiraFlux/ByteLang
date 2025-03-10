@@ -13,13 +13,13 @@ from bytelang.abc.semantic import SemanticContext
 class CommonSemanticContext[T](SemanticContext, ABC):
     """Контекст общего назначения"""
 
-    macro_registry: MutableRegistry[str, MacroProfile]
+    macro_registry: MutableRegistry[str, MacroProfile, str]
     """Реестр макросов"""
 
-    type_registry: MutableRegistry[str, TypeProfile]
+    type_registry: MutableRegistry[str, TypeProfile, str]
     """Реестр типов"""
 
-    const_registry: MutableRegistry[str, RValueProfile]
+    const_registry: MutableRegistry[str, RValueProfile, str]
     """Реестр констант"""
 
     @abstractmethod

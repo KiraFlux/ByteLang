@@ -9,5 +9,5 @@ from bytelang.abc.registry import Registry
 class PackageBundle:
     """Набор данных пакета"""
 
-    instructions: Registry[str, PackageInstructionProfile]
+    instructions: Registry[str, PackageInstructionProfile, str]
     """Инструкции"""

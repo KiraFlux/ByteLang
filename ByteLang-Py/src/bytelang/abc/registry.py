@@ -6,17 +6,18 @@ from pathlib import Path
 from typing import Final
 from typing import Iterable
 from typing import Mapping
-from typing import Optional
+
+from bytelang.core.result import Result
 
 
-class Registry[Key, Item](ABC):
+class Registry[Key, Item, Err](ABC):
     """Реестр"""
 
     def __init__(self) -> None:
         self._items = dict[Key, Item]()
 
     @abstractmethod
-    def get(self, key: Key) -> Optional[Item]:
+    def get(self, key: Key) -> Result[Item, Err]:
         """Получить предмет по ключу"""
 
     def has(self, key: Key) -> bool:
@@ -32,7 +33,7 @@ class Registry[Key, Item](ABC):
         return self._items
 
 
-class MutableRegistry[Key, Item](Registry[Key, Item], ABC):
+class MutableRegistry[Key, Item, Err](Registry[Key, Item, Err], ABC):
     """Интерфейс позволяет добавлять элементы налету"""
 
     def register(self, key: Key, item: Item) -> None:
@@ -44,25 +45,26 @@ class MutableRegistry[Key, Item](Registry[Key, Item], ABC):
         self._items.update(items)
 
 
-class LazyRegistry[Key, Item](Registry[Key, Item], ABC):
+class LazyRegistry[Key, Item, Err](Registry[Key, Item, Err], ABC):
     """Ленивый реестр - загрузка происходит по мере необходимости"""
 
-    def get(self, key: Key) -> Optional[Item]:
+    def get(self, key: Key) -> Result[Item, Err]:
         if (ret := self._items.get(key)) is not None:
             return ret
 
-        if (ret := self._load(key)) is not None:
-            self._items[key] = ret
-            return ret
+        ret = self._load(key)
 
-        return None
+        if ret.isOk():
+            self._items[key] = ret.unwrap()
+
+        return ret
 
     @abstractmethod
-    def _load(self, key: Key) -> Optional[Item]:
+    def _load(self, key: Key) -> Result[Item, Err]:
         """Загрузить предмет"""
 
 
-class CatalogRegistry[Item](LazyRegistry[str, Item], ABC):
+class CatalogRegistry[Item, Err](LazyRegistry[str, Item, Err], ABC):
     """Каталоговый реестр - загрузка файлов по мере необходимости"""
 
     def __init__(self, catalog: Path, extension: str) -> None:
@@ -71,10 +73,10 @@ class CatalogRegistry[Item](LazyRegistry[str, Item], ABC):
         self._extension: Final[str] = extension
 
     @abstractmethod
-    def _loadFile(self, filepath: Path) -> Optional[Item]:
+    def _loadFile(self, filepath: Path) -> Result[Item, Err]:
         """Загрузить из файла"""
 
-    def _load(self, key: str) -> Optional[Item]:
+    def _load(self, key: str) -> Result[Item, Err]:
         return self._loadFile(self.__keyToPath(key))
 
     def __keyToPath(self, key: str) -> Path:

@@ -10,7 +10,7 @@ from bytelang.impl.semantizer.common import CommonSemanticContext
 class PackageSemanticContext(CommonSemanticContext[PackageBundle]):
     """Семантический анализатор пакета"""
 
-    instruction_registry: MutableRegistry[str, PackageInstructionProfile]
+    instruction_registry: MutableRegistry[str, PackageInstructionProfile, str]
     """Реестр инструкций"""
 
     def toBundle(self) -> PackageBundle:

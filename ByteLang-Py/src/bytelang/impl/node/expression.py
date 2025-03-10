@@ -59,7 +59,7 @@ class Identifier(Expression):
         return table.get(self, self)
 
     def accept(self, context: CommonSemanticContext) -> Result[RValueProfile, Iterable[str]]:
-        return SingleResult.fromOptional(context.const_registry.get(self.id), lambda: (f"Const not found: {self}",))
+        return context.const_registry.get(self.id)
 
     @classmethod
     def parse(cls, parser: Parser) -> Result[Identifier, Iterable[str]]:
@@ -159,31 +159,28 @@ class HasIdentifier:
 class HasExistingID(HasIdentifier):
     """Узел имеет идентификатор, уже содержащийся в реестре"""
 
-    def checkIdentifier[T](self, registry: Registry[str, T]) -> Result[T, str]:
-        """Проверить наличие идентификатора и получить результат"""
-        return SingleResult.fromOptional(registry.get(self.identifier.id), lambda: f"ID{self} not existing in {registry}")
-
 
 class HasUniqueID(HasIdentifier):
     """Узел имеет уникальный идентификатор"""
 
-    def checkIdentifier[T](self, registry: Registry[str, T]) -> Optional[str]:
+    def checkIdentifier[T](self, registry: Registry[str, T, str]) -> Optional[str]:
         """Проверить уникальность идентификатора"""
         if registry.has(self.identifier.id):
             return f"{registry} has {self}"
 
 
 @dataclass(frozen=True)
-class MacroCall(Expression, HasExistingID):
+class MacroCall(Expression):
     """Узел развёртки макроса"""
 
+    macro_id: str
     arguments: Iterable[Expression]
 
     def expand(self, table: Mapping[Identifier, Expression]) -> Expression:
-        return MacroCall(self.identifier, (arg.expand(table) for arg in self.arguments))
+        return MacroCall(self.macro_id, tuple(arg.expand(table) for arg in self.arguments))
 
     def accept(self, context: CommonSemanticContext) -> Result[RValueProfile, Iterable[str]]:
-        macro_result = self.checkIdentifier(context.macro_registry)
+        macro_result = context.macro_registry.get(self.macro_id)
 
         if macro_result.isError():
             return macro_result.flow(lambda e: (e,))

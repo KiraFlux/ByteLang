@@ -43,7 +43,7 @@ class PureTypeNode(TypeNode, HasExistingID):
     """Чистый тип"""
 
     def accept(self, context: CommonSemanticContext) -> Result[TypeProfile, Iterable[str]]:
-        return self.checkIdentifier(context.type_registry).map(err=lambda e: (e,))
+        return context.type_registry.get(self.identifier.id).map(err=lambda e: (e,))
 
     @classmethod
     def parse(cls, parser: Parser) -> Result[TypeNode, Iterable[str]]:

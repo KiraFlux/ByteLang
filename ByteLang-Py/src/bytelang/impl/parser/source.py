@@ -5,9 +5,9 @@ from typing import Optional
 
 from bytelang.core.result import Result
 from bytelang.core.tokens import TokenType
-from bytelang.impl.node.directive import Directive
-from bytelang.impl.node.directive import EnvSelect
-from bytelang.impl.node.directive import MarkDefine
+from bytelang.impl.node.directive.super import Directive
+from bytelang.impl.node.directive.source import EnvSelect
+from bytelang.impl.node.directive.source import MarkDefine
 from bytelang.impl.node.instruction import InstructionCall
 from bytelang.impl.node.statement import Statement
 from bytelang.impl.parser.common import CommonParser

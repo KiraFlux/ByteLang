@@ -9,7 +9,7 @@ from bytelang.impl.semantizer.common import CommonSemanticContext
 class SourceSemanticContext(CommonSemanticContext):
     """Контекст семантического анализа исполняемого кода"""
 
-    environment_registry: Registry[str, NotImplemented]  # todo Env bundle
+    environment_registry: Registry[str, NotImplemented, NotImplemented]  # todo Env bundle
     """Реестр окружений"""
 
     selected_environment: Optional[NotImplemented]
