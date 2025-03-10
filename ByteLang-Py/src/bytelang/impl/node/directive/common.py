@@ -49,10 +49,7 @@ class ConstDefine(CommonDirective, HasUniqueID):
         ret.putOptionalError(self.checkIdentifier(context.const_registry))
         expr_value = ret.putMulti(self.expression.accept(context))
 
-        if ret.isOk():
-            context.const_registry.register(self.identifier.id, expr_value.unwrap())
-
-        return ret.make(lambda: None)
+        return ret.make(lambda: context.const_registry.register(self.identifier.id, expr_value.unwrap()))
 
     @classmethod
     def parse(cls, parser: Parser) -> Result[Directive, Iterable[str]]:

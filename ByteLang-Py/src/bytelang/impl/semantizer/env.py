@@ -1,20 +1,24 @@
 """Контекст семантического анализа файла окружения"""
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Optional
 
 from bytelang.abc.profiles import EnvironmentInstructionProfile
 from bytelang.abc.registry import MutableRegistry
 from bytelang.abc.registry import Registry
+from bytelang.abc.semantic import SemanticContext
 from bytelang.abc.serializer import Serializer
 from bytelang.core.bundle.env import EnvironmentBundle
 from bytelang.core.bundle.package import PackageBundle
 from bytelang.core.bundle.pointer import PointersBundle
+from bytelang.impl.registry.loader import CodeLoadingRegistry
 from bytelang.impl.semantizer.common import CommonSemanticContext
 
 
 @dataclass
-class EnvironmentSemanticContext(CommonSemanticContext[EnvironmentBundle]):
+class EnvironmentSemanticContext(CommonSemanticContext, SemanticContext[EnvironmentBundle]):
     """Контекст семантического анализа файла окружения"""
 
     package_registry: Registry[str, PackageBundle, str]
@@ -47,15 +51,8 @@ class EnvironmentSemanticContext(CommonSemanticContext[EnvironmentBundle]):
 
 
 def _test():
-    from io import StringIO
-
-    from bytelang.core.stream import OutputStream
-    from bytelang.core.lexer import Lexer
-    from bytelang.core.tokens import TokenType
-    from bytelang.impl.node.program import Program
     from bytelang.impl.registry.immediate import MutableImmediateRegistry
     from bytelang.impl.profiles.type import PrimitiveTypeProfile
-    from bytelang.impl.parser.common import CommonParser
     from bytelang.impl.parser.package import PackageParser
     from bytelang.impl.parser.env import EnvironmentParser
     from bytelang.impl.semantizer.package import PackageSemanticContext
@@ -63,78 +60,59 @@ def _test():
 
     from rustpy.exceptions import Panic
 
-    def _process[S: CommonSemanticContext](code: str, parser_cls: type[CommonParser], context: S) -> S:
-        _tokens = Lexer(TokenType.build_regex()).run(StringIO(code)).unwrap()
-        print(_tokens)
+    from pathlib import Path
 
-        _program = Program.parse(parser_cls(OutputStream(tuple(_tokens)))).unwrap()
-        print(_program)
+    path = Path(r"A:\Projects\ByteLang\ByteLang-Py\res\test")
 
-        _program.accept(context).unwrap()
+    _primitive_registry = PrimitiveRegistry()
 
-        pass
+    _common_context = CommonSemanticContext(
+        macro_registry=MutableImmediateRegistry(()),
+        type_registry=MutableImmediateRegistry((
+            (_id, PrimitiveTypeProfile(_primitive))
+            for (_id, _primitive) in _primitive_registry.getItems()
+        )),
+        const_registry=MutableImmediateRegistry(()),
+    )
 
-        return context
+    package_loader = CodeLoadingRegistry[PackageBundle, PackageSemanticContext](
+        path,
+        _common_context,
+        lambda tokens: PackageParser(tokens),
+        lambda context: PackageSemanticContext(
+            macro_registry=context.macro_registry,
+            type_registry=context.type_registry,
+            const_registry=context.const_registry,
+            instruction_registry=MutableImmediateRegistry(())
+        )
+    )
+
+    env_loader = CodeLoadingRegistry[EnvironmentBundle, EnvironmentSemanticContext](
+        path,
+        _common_context,
+        lambda tokens: EnvironmentParser(tokens),
+        lambda context: EnvironmentSemanticContext(
+            macro_registry=context.macro_registry,
+            type_registry=context.type_registry,
+            const_registry=context.const_registry,
+            package_registry=package_loader,
+            instruction_registry=MutableImmediateRegistry(()),
+            primitive_serializers_registry=_primitive_registry
+        )
+    )
 
     def _pr(title: str, reg: Registry):
         print(f"{f" {title} ({len(tuple(reg.getItems()))}) ":-^40}")
         print("\n".join(map(str, reg.getItems())))
 
     try:
+        _my_env = env_loader.get("test_env").unwrap()
 
-        package_code = """
-        .macro foo() -> 12345
-        .const foo = @foo()
-        .type alias = *u8
-        .struct FooBar { x: f32, y: f32 }
-        
-        .inst go(a: alias, b: [foo]u8)
-        
-        """
-
-        _primitive_registry = PrimitiveRegistry()
-
-        _global_macros = MutableImmediateRegistry(())
-
-        _global_types = MutableImmediateRegistry((
-            (_id, PrimitiveTypeProfile(_primitive))
-            for (_id, _primitive) in _primitive_registry.getItems()
-        ))
-
-        _global_constants = MutableImmediateRegistry(())
-
-        my_package = _process(package_code, PackageParser, PackageSemanticContext(
-            macro_registry=_global_macros,
-            type_registry=_global_types,
-            const_registry=_global_constants,
-            instruction_registry=MutableImmediateRegistry(())
-        ))
-
-        _pr("Instructions", my_package.instruction_registry)
-
-        env_code = """
-        
-        .ptr_inst u8
-    
-        .use package
-        """
-
-        env_context = _process(env_code, EnvironmentParser, EnvironmentSemanticContext(
-            macro_registry=_global_macros,
-            type_registry=_global_types,
-            const_registry=_global_constants,
-            package_registry=MutableImmediateRegistry((
-                ("package", my_package.toBundle()),
-            )),
-            instruction_registry=MutableImmediateRegistry(()),
-            primitive_serializers_registry=_primitive_registry
-        ))
-
-        _pr("Constants", env_context.const_registry)
-        _pr("Macro", env_context.macro_registry)
-        _pr("Types", env_context.type_registry)
-        _pr("Packages", env_context.package_registry)
-        _pr("Instructions", env_context.instruction_registry)
+        _pr("Constants", _common_context.const_registry)
+        _pr("Macro", _common_context.macro_registry)
+        _pr("Types", _common_context.type_registry)
+        _pr("Packages", package_loader)
+        _pr("Instructions", _my_env.instructions)
 
     except Panic as e:
         print(e)

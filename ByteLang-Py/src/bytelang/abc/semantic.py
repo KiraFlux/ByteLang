@@ -6,8 +6,12 @@ from typing import Iterable
 from bytelang.core.result import Result
 
 
-class SemanticContext(ABC):
+class SemanticContext[T](ABC):
     """Контекст семантического анализа"""
+
+    @abstractmethod
+    def toBundle(self) -> T:
+        """Преобразовать семантический контекст в набор"""
 
 
 class SemanticAcceptor[S: SemanticContext, R](ABC):

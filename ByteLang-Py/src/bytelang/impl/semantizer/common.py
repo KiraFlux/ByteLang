@@ -1,5 +1,5 @@
-from abc import ABC
-from abc import abstractmethod
+from __future__ import annotations
+
 from dataclasses import dataclass
 
 from bytelang.abc.profiles import MacroProfile
@@ -10,7 +10,7 @@ from bytelang.abc.semantic import SemanticContext
 
 
 @dataclass
-class CommonSemanticContext[T](SemanticContext, ABC):
+class CommonSemanticContext(SemanticContext[None]):
     """Контекст общего назначения"""
 
     macro_registry: MutableRegistry[str, MacroProfile, str]
@@ -22,9 +22,8 @@ class CommonSemanticContext[T](SemanticContext, ABC):
     const_registry: MutableRegistry[str, RValueProfile, str]
     """Реестр констант"""
 
-    @abstractmethod
-    def toBundle(self) -> T:
-        """Создать набор на основании этого контекста"""
+    def toBundle(self) -> None:
+        return None
 
 
 def _test():
