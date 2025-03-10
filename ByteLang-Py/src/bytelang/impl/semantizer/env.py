@@ -43,6 +43,8 @@ def _test():
     from bytelang.impl.parser.package import PackageParser
     from bytelang.impl.parser.env import EnvironmentParser
     from bytelang.impl.semantizer.package import PackageSemanticContext
+    from bytelang.impl.registry.primitive import PrimitiveRegistry
+
     from rustpy.exceptions import Panic
 
     def _process[S: CommonSemanticContext](code: str, parser_cls: type[CommonParser], context: S) -> S:
@@ -68,10 +70,15 @@ def _test():
         .inst bar(array: u8_array)
         """
 
+        _primitive_registry = PrimitiveRegistry()
+
         _global_macros = MutableImmediateRegistry(())
+
         _global_types = MutableImmediateRegistry((
-            ("u8", PrimitiveTypeProfile(u8)),
+            (_id, PrimitiveTypeProfile(_primitive))
+            for (_id, _primitive) in _primitive_registry.getItems()
         ))
+
         _global_constants = MutableImmediateRegistry(())
 
         my_package = _process(package_code, PackageParser, PackageSemanticContext(
@@ -100,7 +107,7 @@ def _test():
                 ("package", my_package.toBundle()),
             )),
             instruction_registry=MutableImmediateRegistry(()),
-            pointers=PointerBundle(
+            pointers=PointerBundle(  # TODO создать специальные директивы для указания ширин указателей
                 instruction_call_pointer=u8,
                 program_mark_pointer=u16,
                 data_section_pointer=i8
