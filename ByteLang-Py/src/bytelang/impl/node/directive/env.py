@@ -15,10 +15,10 @@ from bytelang.abc.profiles import EnvironmentInstructionProfile
 from bytelang.abc.profiles import PackageInstructionProfile
 from bytelang.abc.registry import Registry
 from bytelang.abc.serializer import Serializer
-from bytelang.core.result import MultiErrorResult
-from bytelang.core.result import Result
-from bytelang.core.result import ResultAccumulator
-from bytelang.core.result import SingleResult
+from bytelang.core.LEGACY_result import MultiErrorLEGACYResult
+from bytelang.core.LEGACY_result import LEGACY_Result
+from bytelang.core.LEGACY_result import LEGACYResultAccumulator
+from bytelang.core.LEGACY_result import SingleLEGACYResult
 from bytelang.core.tokens import TokenType
 from bytelang.impl.node.directive.super import Directive
 from bytelang.impl.node.expression import HasExistingID
@@ -30,7 +30,7 @@ class EnvironmentDirective(Directive[EnvironmentSemanticContext], ABC):
     """Директива, исполняемая в файлах конфигурации окружения"""
 
     @abstractmethod
-    def accept(self, context: EnvironmentSemanticContext) -> Result[None, Iterable[str]]:
+    def accept(self, context: EnvironmentSemanticContext) -> LEGACY_Result[None, Iterable[str]]:
         pass
 
 
@@ -49,10 +49,10 @@ class _SetEnvSpecialPointer(EnvironmentDirective, HasExistingID, ABC):
         """Получить установщик указателя"""
 
     @classmethod
-    def parse(cls, parser: Parser) -> Result[_SetEnvSpecialPointer, Iterable[str]]:
+    def parse(cls, parser: Parser) -> LEGACY_Result[_SetEnvSpecialPointer, Iterable[str]]:
         return Identifier.parse(parser).map(lambda _id: cls(_id))
 
-    def accept(self, context: EnvironmentSemanticContext) -> Result[None, Iterable[str]]:
+    def accept(self, context: EnvironmentSemanticContext) -> LEGACY_Result[None, Iterable[str]]:
         return context.primitive_serializers_registry.get(self.identifier.id).map(lambda s: self._getSetter(context)(s), lambda e: (e,))
 
 
@@ -108,15 +108,15 @@ class UsePackage(EnvironmentDirective, HasExistingID):
         return "use"
 
     @classmethod
-    def parse(cls, parser: Parser) -> Result[Directive, Iterable[str]]:
-        ret = MultiErrorResult()
+    def parse(cls, parser: Parser) -> LEGACY_Result[Directive, Iterable[str]]:
+        ret = MultiErrorLEGACYResult()
 
         _package = ret.putMulti(Identifier.parse(parser))
         _instructions = ret.putMulti(cls._parseUsedInstructions(parser))
 
         return ret.make(lambda: cls(_package.unwrap(), _instructions.unwrap()))
 
-    def accept(self, context: EnvironmentSemanticContext) -> Result[None, Iterable[str]]:
+    def accept(self, context: EnvironmentSemanticContext) -> LEGACY_Result[None, Iterable[str]]:
         # что пакет существует
         package_result = context.package_registry.get(self.identifier.id)
 
@@ -134,7 +134,7 @@ class UsePackage(EnvironmentDirective, HasExistingID):
         if env_result.isError():
             return env_result.flow()
 
-        ret = MultiErrorResult()
+        ret = MultiErrorLEGACYResult()
 
         for env_inst_key, env_inst_value in env_result.unwrap().items():
             if context.instruction_registry.has(env_inst_key):
@@ -148,12 +148,12 @@ class UsePackage(EnvironmentDirective, HasExistingID):
     def _acceptEnvInstructions(
             package_instructions: Mapping[str, PackageInstructionProfile],
             context: EnvironmentSemanticContext
-    ) -> Result[Mapping[str, EnvironmentInstructionProfile], Iterable[str]]:
+    ) -> LEGACY_Result[Mapping[str, EnvironmentInstructionProfile], Iterable[str]]:
 
         if context.instruction_pointer is None:
-            return SingleResult.error((f"{context.instruction_pointer=}",))
+            return SingleLEGACYResult.error((f"{context.instruction_pointer=}",))
 
-        ret = ResultAccumulator()
+        ret = LEGACYResultAccumulator()
         package_instruction_index_offset: int = len(context.instruction_registry.getMappingView())
 
         for offset, (inst_key, package_inst) in enumerate(package_instructions.items()):
@@ -164,11 +164,11 @@ class UsePackage(EnvironmentDirective, HasExistingID):
 
         return ret.map(lambda items: dict(items))
 
-    def _acceptChosenInstructions(self, instructions: Registry[str, PackageInstructionProfile, str]) -> Result[Mapping[str, PackageInstructionProfile], Iterable[str]]:
+    def _acceptChosenInstructions(self, instructions: Registry[str, PackageInstructionProfile, str]) -> LEGACY_Result[Mapping[str, PackageInstructionProfile], Iterable[str]]:
         if self.selected_instructions is None:
-            return SingleResult.ok(instructions.getMappingView())
+            return SingleLEGACYResult.ok(instructions.getMappingView())
 
-        ret = ResultAccumulator()
+        ret = LEGACYResultAccumulator()
 
         for selected in self.selected_instructions:
             ret.putSingle(instructions.get(selected.id).map(lambda ins: (selected.id, ins)))
@@ -176,8 +176,8 @@ class UsePackage(EnvironmentDirective, HasExistingID):
         return ret.map(lambda items: dict(items))
 
     @classmethod
-    def _parseUsedInstructions(cls, parser: Parser) -> Result[Optional[Iterable[Identifier]], Iterable[str]]:
+    def _parseUsedInstructions(cls, parser: Parser) -> LEGACY_Result[Optional[Iterable[Identifier]], Iterable[str]]:
         if parser.tokens.peek().type == TokenType.OpenFigure:
             return parser.braceArguments(lambda: Identifier.parse(parser), TokenType.OpenFigure, TokenType.CloseFigure)
 
-        return SingleResult.ok(None)
+        return SingleLEGACYResult.ok(None)

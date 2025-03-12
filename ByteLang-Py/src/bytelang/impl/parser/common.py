@@ -3,8 +3,8 @@ from typing import Iterable
 from typing import Optional
 
 from bytelang.abc.parser import Parser
-from bytelang.core.result import Result
-from bytelang.core.result import SingleResult
+from bytelang.core.LEGACY_result import LEGACY_Result
+from bytelang.core.LEGACY_result import SingleLEGACYResult
 from bytelang.abc.stream import OutputStream
 from bytelang.core.tokens import Token
 from bytelang.core.tokens import TokenType
@@ -38,7 +38,7 @@ class CommonParser(Parser[Statement]):
             for d in self.getDirectives()
         ))
 
-    def _directive(self) -> Result[Directive, Iterable[str]]:
+    def _directive(self) -> LEGACY_Result[Directive, Iterable[str]]:
         """Парсинг директивы"""
 
         def _f(e):
@@ -50,7 +50,7 @@ class CommonParser(Parser[Statement]):
         directive = self.directive_registry.get(identifier.unwrap().value)
 
         if directive.isError():
-            return SingleResult.error((f"Не удалось найти директиву: {identifier}",))
+            return SingleLEGACYResult.error((f"Не удалось найти директиву: {identifier}",))
 
         node = directive.unwrap().parse(self)
 
@@ -59,7 +59,7 @@ class CommonParser(Parser[Statement]):
 
         return node
 
-    def statement(self) -> Result[Optional[Statement], Iterable[str]]:
+    def statement(self) -> LEGACY_Result[Optional[Statement], Iterable[str]]:
         if self.tokens.peek().type == TokenType.Directive:
             return self._directive()
 

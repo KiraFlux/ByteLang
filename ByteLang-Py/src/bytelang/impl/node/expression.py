@@ -13,9 +13,9 @@ from bytelang.abc.parser import Parser
 from bytelang.abc.profiles import RValueProfile
 from bytelang.abc.registry import Registry
 from bytelang.core.ops import Operator
-from bytelang.core.result import MultiErrorResult
-from bytelang.core.result import Result
-from bytelang.core.result import SingleResult
+from bytelang.core.LEGACY_result import MultiErrorLEGACYResult
+from bytelang.core.LEGACY_result import LEGACY_Result
+from bytelang.core.LEGACY_result import SingleLEGACYResult
 from bytelang.core.tokens import TokenType
 from bytelang.impl.node.super import SuperNode
 from bytelang.impl.semantizer.common import CommonSemanticContext
@@ -25,7 +25,7 @@ class Expression(SuperNode[CommonSemanticContext, RValueProfile, "Expression"], 
     """Выражение"""
 
     @classmethod
-    def parse(cls, parser: Parser) -> Result[Expression, Iterable[str]]:
+    def parse(cls, parser: Parser) -> LEGACY_Result[Expression, Iterable[str]]:
         match parser.tokens.peek().type:
             case TokenType.Identifier:
                 return Identifier.parse(parser)
@@ -37,10 +37,10 @@ class Expression(SuperNode[CommonSemanticContext, RValueProfile, "Expression"], 
                 return Literal.parse(parser)
 
             case not_expression_token:
-                return SingleResult.error((f"Token not an expression: {not_expression_token}",))
+                return SingleLEGACYResult.error((f"Token not an expression: {not_expression_token}",))
 
     @abstractmethod
-    def accept(self, context: CommonSemanticContext) -> Result[RValueProfile, Iterable[str]]:
+    def accept(self, context: CommonSemanticContext) -> LEGACY_Result[RValueProfile, Iterable[str]]:
         pass
 
     @abstractmethod
@@ -58,11 +58,11 @@ class Identifier(Expression):
     def expand(self, table: Mapping[Identifier, Expression]) -> Expression:
         return table.get(self, self)
 
-    def accept(self, context: CommonSemanticContext) -> Result[RValueProfile, Iterable[str]]:
+    def accept(self, context: CommonSemanticContext) -> LEGACY_Result[RValueProfile, Iterable[str]]:
         return context.const_registry.get(self.id)
 
     @classmethod
-    def parse(cls, parser: Parser) -> Result[Identifier, Iterable[str]]:
+    def parse(cls, parser: Parser) -> LEGACY_Result[Identifier, Iterable[str]]:
         """Парсинг токена в узел Идентификатора"""
         return parser.consume(TokenType.Identifier).map(lambda ok: cls(ok.value), lambda e: (e,))
 
@@ -78,9 +78,9 @@ class Literal[T](Expression):
         return self
 
     @classmethod
-    def parse(cls, parser: Parser) -> Result[Literal[T], Iterable[str]]:
+    def parse(cls, parser: Parser) -> LEGACY_Result[Literal[T], Iterable[str]]:
         """Парсинг токена в узел Литерала"""
-        ret = MultiErrorResult()
+        ret = MultiErrorLEGACYResult()
         token = parser.tokens.next()
 
         if (rv_maker := token.type.getRightValueMaker()) is None:
@@ -88,8 +88,8 @@ class Literal[T](Expression):
 
         return ret.make(lambda: cls(rv_maker(token.value)))
 
-    def accept(self, context: CommonSemanticContext) -> Result[RValueProfile[T], Iterable[str]]:
-        return SingleResult.ok(self.value)
+    def accept(self, context: CommonSemanticContext) -> LEGACY_Result[RValueProfile[T], Iterable[str]]:
+        return SingleLEGACYResult.ok(self.value)
 
 
 @dataclass(frozen=True)
@@ -105,15 +105,15 @@ class UnaryOp(Expression):
         return UnaryOp(self.op, self.operand.expand(table))
 
     @classmethod
-    def parse(cls, parser: Parser) -> Result[UnaryOp, Iterable[str]]:
+    def parse(cls, parser: Parser) -> LEGACY_Result[UnaryOp, Iterable[str]]:
         token = parser.tokens.next()
 
         if (operator := token.type.asOperator()) is None:
-            return SingleResult.error((f"Ожидался оператор, получено: {token}",))
+            return SingleLEGACYResult.error((f"Ожидался оператор, получено: {token}",))
 
         return Expression.parse(parser).map(lambda expr: cls(operator, expr))
 
-    def accept[T](self, context: CommonSemanticContext) -> Result[RValueProfile[T], Iterable[str]]:
+    def accept[T](self, context: CommonSemanticContext) -> LEGACY_Result[RValueProfile[T], Iterable[str]]:
         if (rv := self.operand.accept(context)).isError():
             return rv
 
@@ -134,8 +134,8 @@ class BinaryOp(Expression):
     def expand(self, table: Mapping[Identifier, Expression]) -> Expression:
         return BinaryOp(self.op, self.left.expand(table), self.right.expand(table))
 
-    def accept(self, context: CommonSemanticContext) -> Result[RValueProfile, Iterable[str]]:
-        ret = MultiErrorResult()
+    def accept(self, context: CommonSemanticContext) -> LEGACY_Result[RValueProfile, Iterable[str]]:
+        ret = MultiErrorLEGACYResult()
 
         a = ret.putMulti(self.left.accept(context))
         b = ret.putMulti(self.right.accept(context))
@@ -179,13 +179,13 @@ class MacroCall(Expression):
     def expand(self, table: Mapping[Identifier, Expression]) -> Expression:
         return MacroCall(self.macro_id, tuple(arg.expand(table) for arg in self.arguments))
 
-    def accept(self, context: CommonSemanticContext) -> Result[RValueProfile, Iterable[str]]:
+    def accept(self, context: CommonSemanticContext) -> LEGACY_Result[RValueProfile, Iterable[str]]:
         macro_result = context.macro_registry.get(self.macro_id)
 
         if macro_result.isError():
             return macro_result.flow(lambda e: (e,))
 
-        expand: Result[Expression, str] = macro_result.unwrap().expand(self.arguments)
+        expand: LEGACY_Result[Expression, str] = macro_result.unwrap().expand(self.arguments)
 
         if expand.isError():
             return expand.flow(lambda e: (e,))
@@ -193,8 +193,8 @@ class MacroCall(Expression):
         return expand.unwrap().accept(context)
 
     @classmethod
-    def parse(cls, parser: Parser) -> Result[MacroCall, Iterable[str]]:
-        ret = MultiErrorResult()
+    def parse(cls, parser: Parser) -> LEGACY_Result[MacroCall, Iterable[str]]:
+        ret = MultiErrorLEGACYResult()
 
         _id = ret.putSingle(parser.consume(TokenType.MacroCall))
         args = ret.putMulti(parser.braceArguments(lambda: Expression.parse(parser), TokenType.OpenRound, TokenType.CloseRound))

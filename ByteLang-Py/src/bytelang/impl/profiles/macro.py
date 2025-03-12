@@ -2,8 +2,8 @@ from dataclasses import dataclass
 from typing import Sequence
 
 from bytelang.abc.profiles import MacroProfile
-from bytelang.core.result import Result
-from bytelang.core.result import SingleResult
+from bytelang.core.LEGACY_result import LEGACY_Result
+from bytelang.core.LEGACY_result import SingleLEGACYResult
 from bytelang.impl.node.expression import Expression
 from bytelang.impl.node.expression import Identifier
 
@@ -15,8 +15,8 @@ class MacroProfileImpl(MacroProfile[Expression]):
     arguments: Sequence[Identifier]
     template: Expression
 
-    def expand(self, arguments: Sequence[Expression]) -> Result[Expression, str]:
+    def expand(self, arguments: Sequence[Expression]) -> LEGACY_Result[Expression, str]:
         if (len_got := len(arguments)) != (len_expected := len(self.arguments)):
-            return SingleResult.error(f"Expected: {len_expected} ({self.arguments}), got: {len_got} ({arguments})")
+            return SingleLEGACYResult.error(f"Expected: {len_expected} ({self.arguments}), got: {len_got} ({arguments})")
 
-        return SingleResult.ok(self.template.expand({key: expr for key, expr in zip(self.arguments, arguments)}))
+        return SingleLEGACYResult.ok(self.template.expand({key: expr for key, expr in zip(self.arguments, arguments)}))

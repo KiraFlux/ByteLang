@@ -6,9 +6,9 @@ from typing import Sequence
 
 from bytelang.abc.serializer import Serializable
 from bytelang.abc.serializer import Serializer
-from bytelang.core.result import Result
-from bytelang.core.result import ResultAccumulator
-from bytelang.core.result import SingleResult
+from bytelang.core.LEGACY_result import LEGACY_Result
+from bytelang.core.LEGACY_result import LEGACYResultAccumulator
+from bytelang.core.LEGACY_result import SingleLEGACYResult
 
 
 @dataclass(frozen=True)
@@ -21,14 +21,14 @@ class ArraySerializer[T: Serializable](Serializer[Sequence[T]]):
     """Длинна массива"""
 
     @classmethod
-    def new(cls, item: Serializer[T], length: int) -> Result[ArraySerializer, str]:
+    def new(cls, item: Serializer[T], length: int) -> LEGACY_Result[ArraySerializer, str]:
         """Создать массив с проверкой"""
         if length < 1:
-            return SingleResult.error(f"Array len not valid: {length}")
-        return SingleResult.ok(cls(item, length))
+            return SingleLEGACYResult.error(f"Array len not valid: {length}")
+        return SingleLEGACYResult.ok(cls(item, length))
 
-    def unpack(self, buffer: bytes) -> Result[T, Iterable[str]]:
-        ret = ResultAccumulator()
+    def unpack(self, buffer: bytes) -> LEGACY_Result[T, Iterable[str]]:
+        ret = LEGACYResultAccumulator()
 
         offset: int = 0
 
@@ -38,11 +38,11 @@ class ArraySerializer[T: Serializable](Serializer[Sequence[T]]):
 
         return ret.map()
 
-    def pack(self, value: T) -> Result[bytes, Iterable[str]]:
+    def pack(self, value: T) -> LEGACY_Result[bytes, Iterable[str]]:
         if (got := len(value)) != self._length:
-            return SingleResult.error((f"Expected: {self._length} ({self}), got {got} ({value}",))
+            return SingleLEGACYResult.error((f"Expected: {self._length} ({self}), got {got} ({value}",))
 
-        ret = ResultAccumulator()
+        ret = LEGACYResultAccumulator()
 
         for field_value in value:
             ret.putMulti(self._item_serializer.pack(field_value))

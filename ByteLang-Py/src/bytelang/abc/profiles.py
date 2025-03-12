@@ -9,9 +9,9 @@ from typing import Sequence
 from bytelang.abc.node import Node
 from bytelang.abc.semantic import SemanticContext
 from bytelang.core.ops import Operator
-from bytelang.core.result import Result
-from bytelang.core.result import ResultAccumulator
-from bytelang.core.result import SingleResult
+from bytelang.core.LEGACY_result import LEGACY_Result
+from bytelang.core.LEGACY_result import LEGACYResultAccumulator
+from bytelang.core.LEGACY_result import SingleLEGACYResult
 
 
 @dataclass(frozen=True)
@@ -19,7 +19,7 @@ class MacroProfile[Arg: Node](ABC):
     """Профиль макроса"""
 
     @abstractmethod
-    def expand(self, arguments: Sequence[Arg]) -> Result[Arg, str]:
+    def expand(self, arguments: Sequence[Arg]) -> LEGACY_Result[Arg, str]:
         """Развернуть макрос"""
 
 
@@ -36,11 +36,11 @@ class RValueProfile[T](ABC):
         """Получить значение профиля"""
 
     @abstractmethod
-    def applyUnaryOperator(self, op: Operator) -> Result[RValueProfile[T], str]:
+    def applyUnaryOperator(self, op: Operator) -> LEGACY_Result[RValueProfile[T], str]:
         """Применить данный оператор над значением"""
 
     @abstractmethod
-    def applyBinaryOperator(self, other: RValueProfile[T], op: Operator) -> Result[RValueProfile[T], str]:
+    def applyBinaryOperator(self, other: RValueProfile[T], op: Operator) -> LEGACY_Result[RValueProfile[T], str]:
         """Применить данный бинарный оператор к значению"""
 
 
@@ -48,7 +48,7 @@ class TypeProfile[S: SemanticContext](ABC):
     """Профиль типа"""
 
     @abstractmethod
-    def apply[T](self, rvalue: RValueProfile[T], context: S) -> Result[bytes, Iterable[str]]:
+    def apply[T](self, rvalue: RValueProfile[T], context: S) -> LEGACY_Result[bytes, Iterable[str]]:
         """Применить профиль типа на rvalue"""
 
 
@@ -59,13 +59,13 @@ class PackageInstructionProfile:
     _arguments: Sequence[tuple[str, TypeProfile]]
     """Аргументы инструкции"""
 
-    def packArguments(self, arguments: Sequence[RValueProfile], context: SemanticContext) -> Result[bytes, Iterable[str]]:
+    def packArguments(self, arguments: Sequence[RValueProfile], context: SemanticContext) -> LEGACY_Result[bytes, Iterable[str]]:
         """Упаковка аргументов для вызова инструкции"""
 
         if (got := len(arguments)) != (need := len(self._arguments)):
-            return SingleResult.error((f"Invalid arg count: {got} {need=}",))
+            return SingleLEGACYResult.error((f"Invalid arg count: {got} {need=}",))
 
-        ret = ResultAccumulator()
+        ret = LEGACYResultAccumulator()
 
         for (arg_id, arg_type_profile), arg_value in zip(self._arguments, arguments):
             ret.putMulti(arg_type_profile.apply(arg_value, context).map(err=lambda errors: map(
@@ -83,6 +83,6 @@ class EnvironmentInstructionProfile[S: SemanticContext]:
     _code: bytes
     """код инструкции в таблице"""
 
-    def pack(self, arguments: Sequence[RValueProfile], context: S) -> Result[bytes, Iterable[str]]:
+    def pack(self, arguments: Sequence[RValueProfile], context: S) -> LEGACY_Result[bytes, Iterable[str]]:
         """Упаковка вызова инструкции"""
         return self._package_instruction.packArguments(arguments, context).map(lambda packed_arguments: self._code + packed_arguments)

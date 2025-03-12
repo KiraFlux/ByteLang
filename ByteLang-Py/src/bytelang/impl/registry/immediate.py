@@ -6,8 +6,8 @@ from typing import Iterable
 
 from bytelang.abc.registry import MutableRegistry
 from bytelang.abc.registry import Registry
-from bytelang.core.result import Result
-from bytelang.core.result import SingleResult
+from bytelang.core.LEGACY_result import LEGACY_Result
+from bytelang.core.LEGACY_result import SingleLEGACYResult
 
 
 class ImmediateRegistry[Key, Item](Registry[Key, Item, str]):
@@ -17,8 +17,8 @@ class ImmediateRegistry[Key, Item](Registry[Key, Item, str]):
         super().__init__()
         self._items.update(items)
 
-    def get(self, key: Key) -> Result[Item, str]:
-        return SingleResult.fromOptional(self._items.get(key), lambda: f"{key} not existing in {self}")
+    def get(self, key: Key) -> LEGACY_Result[Item, str]:
+        return SingleLEGACYResult.fromOptional(self._items.get(key), lambda: f"{key} not existing in {self}")
 
 
 class FileRegistry[Item, RawItem](ImmediateRegistry[str, Item], ABC):

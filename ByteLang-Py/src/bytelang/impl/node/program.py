@@ -6,9 +6,9 @@ from typing import Sequence
 
 from bytelang.abc.parser import Parser
 from bytelang.abc.semantic import SemanticContext
-from bytelang.core.result import MultiErrorResult
-from bytelang.core.result import Result
-from bytelang.core.result import ResultAccumulator
+from bytelang.core.LEGACY_result import MultiErrorLEGACYResult
+from bytelang.core.LEGACY_result import LEGACY_Result
+from bytelang.core.LEGACY_result import LEGACYResultAccumulator
 from bytelang.impl.node.statement import Statement
 from bytelang.impl.node.super import SuperNode
 
@@ -20,8 +20,8 @@ class Program[S: SemanticContext](SuperNode[S, None, "Program"]):
     statements: Sequence[Statement]
     """Statements"""
 
-    def accept(self, context: S) -> Result[None, Iterable[str]]:
-        ret = MultiErrorResult()
+    def accept(self, context: S) -> LEGACY_Result[None, Iterable[str]]:
+        ret = MultiErrorLEGACYResult()
 
         for statement in self.statements:
             ret.putMulti(statement.accept(context))
@@ -29,8 +29,8 @@ class Program[S: SemanticContext](SuperNode[S, None, "Program"]):
         return ret.make(lambda: None)
 
     @classmethod
-    def parse(cls, parser: Parser) -> Result[Program, Iterable[str]]:
-        resulter = ResultAccumulator()
+    def parse(cls, parser: Parser) -> LEGACY_Result[Program, Iterable[str]]:
+        resulter = LEGACYResultAccumulator()
 
         while parser.tokens.peek() is not None:
             resulter.putMulti(parser.statement())

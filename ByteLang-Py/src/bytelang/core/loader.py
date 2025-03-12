@@ -6,7 +6,7 @@ from typing import TextIO
 from bytelang.abc.semantic import SemanticContext
 from bytelang.abc.stream import OutputStream
 from bytelang.core.lexer import Lexer
-from bytelang.core.result import Result
+from bytelang.core.LEGACY_result import LEGACY_Result
 from bytelang.core.tokens import Token
 from bytelang.impl.node.program import Program
 from bytelang.impl.parser.common import CommonParser
@@ -23,7 +23,7 @@ class Loader[T, S: SemanticContext]:
     _parser_maker: Callable[[OutputStream[Token]], CommonParser]
     _special_context_maker: Callable[[CommonSemanticContext], S]
 
-    def load(self, source: TextIO) -> Result[T, Iterable[str]]:
+    def load(self, source: TextIO) -> LEGACY_Result[T, Iterable[str]]:
         """Преобразовать исходный код в Bundle"""
 
         tokens = self._lexer.run(source)

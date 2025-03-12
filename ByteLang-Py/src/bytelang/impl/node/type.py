@@ -7,8 +7,8 @@ from typing import Iterable
 
 from bytelang.abc.parser import Parser
 from bytelang.abc.profiles import TypeProfile
-from bytelang.core.result import MultiErrorResult
-from bytelang.core.result import Result
+from bytelang.core.LEGACY_result import MultiErrorLEGACYResult
+from bytelang.core.LEGACY_result import LEGACY_Result
 from bytelang.core.tokens import TokenType
 from bytelang.impl.node.expression import Expression
 from bytelang.impl.node.expression import HasExistingID
@@ -23,7 +23,7 @@ class TypeNode(SuperNode[CommonSemanticContext, TypeProfile, 'Type'], ABC):
     """Узел типа"""
 
     @classmethod
-    def parse(cls, parser: Parser) -> Result[TypeNode, Iterable[str]]:
+    def parse(cls, parser: Parser) -> LEGACY_Result[TypeNode, Iterable[str]]:
         match parser.tokens.peek().type:
             case TokenType.Star:
                 return PointerTypeNode.parse(parser)
@@ -34,7 +34,7 @@ class TypeNode(SuperNode[CommonSemanticContext, TypeProfile, 'Type'], ABC):
         return PureTypeNode.parse(parser)
 
     @abstractmethod
-    def accept(self, context: CommonSemanticContext) -> Result[TypeProfile, Iterable[str]]:
+    def accept(self, context: CommonSemanticContext) -> LEGACY_Result[TypeProfile, Iterable[str]]:
         pass
 
 
@@ -42,11 +42,11 @@ class TypeNode(SuperNode[CommonSemanticContext, TypeProfile, 'Type'], ABC):
 class PureTypeNode(TypeNode, HasExistingID):
     """Чистый тип"""
 
-    def accept(self, context: CommonSemanticContext) -> Result[TypeProfile, Iterable[str]]:
+    def accept(self, context: CommonSemanticContext) -> LEGACY_Result[TypeProfile, Iterable[str]]:
         return context.type_registry.get(self.identifier.id).map(err=lambda e: (e,))
 
     @classmethod
-    def parse(cls, parser: Parser) -> Result[TypeNode, Iterable[str]]:
+    def parse(cls, parser: Parser) -> LEGACY_Result[TypeNode, Iterable[str]]:
         """Создать чистый тип на основе идентификатора"""
         return Identifier.parse(parser).map(lambda ok: cls(ok))
 
@@ -59,12 +59,12 @@ class PointerTypeNode(TypeNode):
     """Тип указателя"""
 
     @classmethod
-    def parse(cls, parser: Parser) -> Result[TypeNode, Iterable[str]]:
+    def parse(cls, parser: Parser) -> LEGACY_Result[TypeNode, Iterable[str]]:
         parser.tokens.next()
         return TypeNode.parse(parser).map(lambda t: cls(t))
 
-    def accept(self, context: CommonSemanticContext) -> Result[TypeProfile, Iterable[str]]:
-        ret = MultiErrorResult()
+    def accept(self, context: CommonSemanticContext) -> LEGACY_Result[TypeProfile, Iterable[str]]:
+        ret = MultiErrorLEGACYResult()
         _type_profile = self.pointer.accept(context)
         return ret.make(lambda: PointerTypeProfile(_type_profile.unwrap()))
 
@@ -79,10 +79,10 @@ class ArrayTypeNode(TypeNode):
     """Выражение, определяющее длину массива"""
 
     @classmethod
-    def parse(cls, parser: Parser) -> Result[TypeNode, Iterable[str]]:
+    def parse(cls, parser: Parser) -> LEGACY_Result[TypeNode, Iterable[str]]:
         parser.tokens.next()
 
-        ret = MultiErrorResult()
+        ret = MultiErrorLEGACYResult()
 
         expr = ret.putMulti(Expression.parse(parser))
         ret.putSingle(parser.consume(TokenType.CloseSquare))
@@ -90,8 +90,8 @@ class ArrayTypeNode(TypeNode):
 
         return ret.make(lambda: cls(_type.unwrap(), expr.unwrap()))
 
-    def accept(self, context: CommonSemanticContext) -> Result[TypeProfile, Iterable[str]]:
-        ret = MultiErrorResult()
+    def accept(self, context: CommonSemanticContext) -> LEGACY_Result[TypeProfile, Iterable[str]]:
+        ret = MultiErrorLEGACYResult()
 
         item_type_profile = ret.putMulti(self.type.accept(context))
         array_length = ret.putMulti(self.length.accept(context))
@@ -106,15 +106,15 @@ class Field(SuperNode[CommonSemanticContext, tuple[str, TypeProfile], "Field"], 
     type: TypeNode
     """Тип поля"""
 
-    def accept(self, context: CommonSemanticContext) -> Result[tuple[str, TypeProfile], Iterable[str]]:
-        ret = MultiErrorResult()
+    def accept(self, context: CommonSemanticContext) -> LEGACY_Result[tuple[str, TypeProfile], Iterable[str]]:
+        ret = MultiErrorLEGACYResult()
         type_profile = ret.putMulti(self.type.accept(context))
         return ret.make(lambda: (self.identifier.id, type_profile.unwrap()))
 
     @classmethod
-    def parse(cls, parser: Parser) -> Result[Field, Iterable[str]]:
+    def parse(cls, parser: Parser) -> LEGACY_Result[Field, Iterable[str]]:
         """Парсинг токенов в поле"""
-        ret = MultiErrorResult()
+        ret = MultiErrorLEGACYResult()
 
         name = ret.putSingle(Identifier.parse(parser))
         ret.putSingle(parser.consume(TokenType.Colon))

@@ -7,7 +7,7 @@ from typing import Final
 from typing import Iterable
 from typing import Mapping
 
-from bytelang.core.result import Result
+from bytelang.core.LEGACY_result import LEGACY_Result
 
 
 class Registry[Key, Item, Err](ABC):
@@ -17,7 +17,7 @@ class Registry[Key, Item, Err](ABC):
         self._items = dict[Key, Item]()
 
     @abstractmethod
-    def get(self, key: Key) -> Result[Item, Err]:
+    def get(self, key: Key) -> LEGACY_Result[Item, Err]:
         """Получить предмет по ключу"""
 
     def has(self, key: Key) -> bool:
@@ -48,7 +48,7 @@ class MutableRegistry[Key, Item, Err](Registry[Key, Item, Err], ABC):
 class LazyRegistry[Key, Item, Err](Registry[Key, Item, Err], ABC):
     """Ленивый реестр - загрузка происходит по мере необходимости"""
 
-    def get(self, key: Key) -> Result[Item, Err]:
+    def get(self, key: Key) -> LEGACY_Result[Item, Err]:
         if (ret := self._items.get(key)) is not None:
             return ret
 
@@ -60,7 +60,7 @@ class LazyRegistry[Key, Item, Err](Registry[Key, Item, Err], ABC):
         return ret
 
     @abstractmethod
-    def _load(self, key: Key) -> Result[Item, Err]:
+    def _load(self, key: Key) -> LEGACY_Result[Item, Err]:
         """Загрузить предмет"""
 
 
@@ -73,10 +73,10 @@ class CatalogRegistry[Item, Err](LazyRegistry[str, Item, Err], ABC):
         self._extension: Final[str] = extension
 
     @abstractmethod
-    def _loadFile(self, filepath: Path) -> Result[Item, Err]:
+    def _loadFile(self, filepath: Path) -> LEGACY_Result[Item, Err]:
         """Загрузить из файла"""
 
-    def _load(self, key: str) -> Result[Item, Err]:
+    def _load(self, key: str) -> LEGACY_Result[Item, Err]:
         return self._loadFile(self.__keyToPath(key))
 
     def __keyToPath(self, key: str) -> Path:

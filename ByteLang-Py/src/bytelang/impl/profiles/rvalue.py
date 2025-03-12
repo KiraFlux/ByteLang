@@ -8,26 +8,26 @@ from typing import Sequence
 
 from bytelang.abc.profiles import RValueProfile
 from bytelang.core.ops import Operator
-from bytelang.core.result import Result
-from bytelang.core.result import SingleResult
+from bytelang.core.LEGACY_result import LEGACY_Result
+from bytelang.core.LEGACY_result import SingleLEGACYResult
 
 
 @dataclass(frozen=True)
 class _NumberRV[T: (int, float)](RValueProfile[T], ABC):
     value: T
 
-    def applyUnaryOperator(self, op: Operator) -> Result[RValueProfile[T], str]:
+    def applyUnaryOperator(self, op: Operator) -> LEGACY_Result[RValueProfile[T], str]:
         if op == Operator.Minus:
-            return SingleResult.ok(_NumberRV(-self.value))
+            return SingleLEGACYResult.ok(_NumberRV(-self.value))
 
         return super().applyUnaryOperator(op)
 
-    def applyBinaryOperator(self, other: RValueProfile[T], op: Operator) -> Result[RValueProfile[T], str]:
+    def applyBinaryOperator(self, other: RValueProfile[T], op: Operator) -> LEGACY_Result[RValueProfile[T], str]:
         a = self.value
         b = other.getValue()
 
-        def _make(value: T) -> Result[RValueProfile[T], str]:
-            return SingleResult.ok(self.new(value))
+        def _make(value: T) -> LEGACY_Result[RValueProfile[T], str]:
+            return SingleLEGACYResult.ok(self.new(value))
 
         match op:
             case Operator.Plus:
@@ -41,7 +41,7 @@ class _NumberRV[T: (int, float)](RValueProfile[T], ABC):
 
             case Operator.Slash:
                 if b == 0:
-                    return SingleResult.error(f"divide by 0 {other}")
+                    return SingleLEGACYResult.error(f"divide by 0 {other}")
                 return _make(a / b)
 
         return super().applyBinaryOperator(other, op)

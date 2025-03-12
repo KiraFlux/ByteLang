@@ -3,7 +3,7 @@ from abc import ABC
 from abc import abstractmethod
 from typing import Iterable
 
-from bytelang.core.result import Result
+from bytelang.core.LEGACY_result import LEGACY_Result
 
 
 class SemanticContext[T](ABC):
@@ -18,5 +18,5 @@ class SemanticAcceptor[S: SemanticContext, R](ABC):
     """Узел способный взаимодействовать с контекстом семантического анализатора"""
 
     @abstractmethod
-    def accept(self, context: S) -> Result[R, Iterable[str]]:
+    def accept(self, context: S) -> LEGACY_Result[R, Iterable[str]]:
         """Использовать контекст на данном"""

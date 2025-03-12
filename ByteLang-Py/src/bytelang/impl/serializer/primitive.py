@@ -6,8 +6,8 @@ from typing import Final
 from typing import Iterable
 
 from bytelang.abc.serializer import Serializer
-from bytelang.core.result import Result
-from bytelang.core.result import SingleResult
+from bytelang.core.LEGACY_result import LEGACY_Result
+from bytelang.core.LEGACY_result import SingleLEGACYResult
 
 
 class _Format:
@@ -71,25 +71,25 @@ class PrimitiveSerializer[T: (int, float)](Serializer[T]):
     def getSize(self) -> int:
         return self._struct.size
 
-    def unpack(self, buffer: bytes) -> Result[T, Iterable[str]]:
+    def unpack(self, buffer: bytes) -> LEGACY_Result[T, Iterable[str]]:
         return self._structResultWrapper(buffer, lambda _b: self._struct.unpack(_b)[0])
 
-    def pack(self, value: T) -> Result[bytes, Iterable[str]]:
+    def pack(self, value: T) -> LEGACY_Result[bytes, Iterable[str]]:
         return self._structResultWrapper(value, self._struct.pack)
 
     def __repr__(self) -> str:
         return f"{_Format.matchPrefix(self._struct.format.strip("<>"))}{self.getSize() * 8}"
 
     @staticmethod
-    def _structResultWrapper[F, T](_from: F, from_to_func: Callable[[F], T]) -> Result[T, Iterable[str]]:
+    def _structResultWrapper[F, T](_from: F, from_to_func: Callable[[F], T]) -> LEGACY_Result[T, Iterable[str]]:
         try:
             _to = from_to_func(_from)
 
         except StructError as e:
-            return SingleResult.error((f"Primitive error: {e} ({_from})",))
+            return SingleLEGACYResult.error((f"Primitive error: {e} ({_from})",))
 
         else:
-            return SingleResult.ok(_to)
+            return SingleLEGACYResult.ok(_to)
 
 
 u8 = PrimitiveSerializer[int | bool](_Format.U8)

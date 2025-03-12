@@ -10,10 +10,10 @@ from bytelang.abc.node import Node
 from bytelang.abc.stream import OutputStream
 from bytelang.core.tokens import Token
 from bytelang.core.tokens import TokenType
-from bytelang.core.result import MultiErrorResult
-from bytelang.core.result import Result
-from bytelang.core.result import ResultAccumulator
-from bytelang.core.result import SingleResult
+from bytelang.core.LEGACY_result import MultiErrorLEGACYResult
+from bytelang.core.LEGACY_result import LEGACY_Result
+from bytelang.core.LEGACY_result import LEGACYResultAccumulator
+from bytelang.core.LEGACY_result import SingleLEGACYResult
 
 
 @dataclass
@@ -22,25 +22,25 @@ class Parser[Stmt: Node](ABC):
 
     tokens: OutputStream[Token]
 
-    def consume(self, token_type: TokenType) -> Result[Token, str]:
+    def consume(self, token_type: TokenType) -> LEGACY_Result[Token, str]:
         """Получить ожидаемый токен"""
 
         token = self.tokens.next()
 
         if token is None:
-            return SingleResult.error(f"Expect: {token_type}, got EOF")
+            return SingleLEGACYResult.error(f"Expect: {token_type}, got EOF")
 
         if token.type != token_type:
-            return SingleResult.error(f"Expect: {token_type}, got {token}")
+            return SingleLEGACYResult.error(f"Expect: {token_type}, got {token}")
 
-        return SingleResult.ok(token)
+        return SingleLEGACYResult.ok(token)
 
     def arguments[T: Node](
             self,
-            element_parser: Callable[[], Result[T, Iterable[str]]],
+            element_parser: Callable[[], LEGACY_Result[T, Iterable[str]]],
             delimiter: TokenType,
             terminator: TokenType
-    ) -> Result[Iterable[T], Iterable[str]]:
+    ) -> LEGACY_Result[Iterable[T], Iterable[str]]:
         """
         Разделенные элементы, заканчивающиеся токеном
         :param element_parser: Способ парсинга элемента
@@ -51,9 +51,9 @@ class Parser[Stmt: Node](ABC):
 
         if self.tokens.peek().type == terminator:
             self.tokens.next()
-            return SingleResult.ok(())
+            return SingleLEGACYResult.ok(())
 
-        resulter: ResultAccumulator[T, str] = ResultAccumulator()
+        resulter: LEGACYResultAccumulator[T, str] = LEGACYResultAccumulator()
 
         while True:
             resulter.putMulti(element_parser())
@@ -75,11 +75,11 @@ class Parser[Stmt: Node](ABC):
 
     def braceArguments[T: Node](
             self,
-            element_parser: Callable[[], Result[T, Iterable[str]]],
+            element_parser: Callable[[], LEGACY_Result[T, Iterable[str]]],
             brace_open: TokenType,
             brace_close: TokenType,
             delimiter: TokenType = TokenType.Comma
-    ) -> Result[Iterable[T], Iterable[str]]:
+    ) -> LEGACY_Result[Iterable[T], Iterable[str]]:
         """
         Парсинг аргументов в скобках
         :param element_parser: Парсер элементов
@@ -89,23 +89,23 @@ class Parser[Stmt: Node](ABC):
         :return: Последовательность узлов согласно функции парсера элементов
         """
 
-        ret = MultiErrorResult()
+        ret = MultiErrorLEGACYResult()
 
         ret.putSingle(self.consume(brace_open))
         args = ret.putMulti(self.arguments(element_parser, delimiter, brace_close))
 
         return ret.make(lambda: args.unwrap())
 
-    def statement(self) -> Result[Optional[Stmt], Iterable[str]]:
+    def statement(self) -> LEGACY_Result[Optional[Stmt], Iterable[str]]:
         """Парсинг statement"""
 
         token = self.tokens.peek()
         self.tokens.next()
 
         if token.type == TokenType.StatementEnd:
-            return SingleResult.ok(None)
+            return SingleLEGACYResult.ok(None)
 
-        return SingleResult.error((f"Неуместный токен: {token}",))
+        return SingleLEGACYResult.error((f"Неуместный токен: {token}",))
 
 
 class Parsable[T: Node]:
@@ -113,5 +113,5 @@ class Parsable[T: Node]:
 
     @classmethod
     @abstractmethod
-    def parse(cls, parser: Parser) -> Result[T, Iterable[str]]:
+    def parse(cls, parser: Parser) -> LEGACY_Result[T, Iterable[str]]:
         """Парсинг узла с помощью парсера"""

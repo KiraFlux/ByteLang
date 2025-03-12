@@ -5,9 +5,9 @@ from typing import TextIO
 
 from bytelang.core.tokens import Token
 from bytelang.core.tokens import TokenType
-from bytelang.core.result import Result
-from bytelang.core.result import ResultAccumulator
-from bytelang.core.result import SingleResult
+from bytelang.core.LEGACY_result import LEGACY_Result
+from bytelang.core.LEGACY_result import LEGACYResultAccumulator
+from bytelang.core.LEGACY_result import SingleLEGACYResult
 
 
 @dataclass(frozen=True)
@@ -16,27 +16,27 @@ class Lexer:
 
     _token_regex: str
 
-    def run(self, source: TextIO) -> Result[Iterable[Token], Iterable[str]]:
+    def run(self, source: TextIO) -> LEGACY_Result[Iterable[Token], Iterable[str]]:
         """
         Преобразовать исходный код в токены
         :param source: исходный код.
         :return Последовательность токенов
         """
-        resulter = ResultAccumulator()
+        resulter = LEGACYResultAccumulator()
 
         for result in self._process(source.read()):
             resulter.putSingle(result)
 
         return resulter
 
-    def _process(self, source_read: str) -> Iterable[Result[Token, str]]:
+    def _process(self, source_read: str) -> Iterable[LEGACY_Result[Token, str]]:
         position: int = 0
 
         while position < len(source_read):
             match = re.match(self._token_regex, source_read[position:])
 
             if match is None:
-                yield SingleResult.error(f"Неизвестный символ: '{source_read[position]}' на позиции {position}")
+                yield SingleLEGACYResult.error(f"Неизвестный символ: '{source_read[position]}' на позиции {position}")
                 position += 1
                 continue
 
@@ -46,7 +46,7 @@ class Lexer:
             if t is None:
                 continue
 
-            yield SingleResult.ok(t)
+            yield SingleLEGACYResult.ok(t)
 
 
 def _test():

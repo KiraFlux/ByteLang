@@ -17,7 +17,7 @@ def _pass(v):
     return v
 
 
-class Result[T, E](ABC):
+class LEGACY_Result[T, E](ABC):
     """Аналог Result<T, E> из Rust"""
 
     @abstractmethod
@@ -32,19 +32,19 @@ class Result[T, E](ABC):
     def isOk(self) -> bool:
         """Результат является значением"""
 
-    def map[_T, _E](self, ok: Callable[[T], _T] = _pass, err: Callable[[E], _E] = _pass) -> Result[_T, _E]:
+    def map[_T, _E](self, ok: Callable[[T], _T] = _pass, err: Callable[[E], _E] = _pass) -> LEGACY_Result[_T, _E]:
         """Преобразовать результат"""
-        return SingleResult.ok(ok(self._getValue())) if self.isOk() else SingleResult.error(err(self.getError()))
+        return SingleLEGACYResult.ok(ok(self._getValue())) if self.isOk() else SingleLEGACYResult.error(err(self.getError()))
 
-    def pipe(self, make_if_ok: Callable[[T], Result[T, E]]) -> Result[T, E]:
+    def pipe(self, make_if_ok: Callable[[T], LEGACY_Result[T, E]]) -> LEGACY_Result[T, E]:
         """Если данный результат не является ошибкой - создать новый"""
         if self.isOk():
             return make_if_ok(self._getValue())
         return self
 
-    def flow[_T, _E](self, err: Callable[[E], _E] = _pass) -> Result[_T, E]:
+    def flow[_T, _E](self, err: Callable[[E], _E] = _pass) -> LEGACY_Result[_T, E]:
         """Перенести ошибку под другой тип значения результата"""
-        return SingleResult.error(err(self.getError()))
+        return SingleLEGACYResult.error(err(self.getError()))
 
     def isError(self) -> bool:
         """Результат является ошибкой"""
@@ -66,14 +66,14 @@ class Result[T, E](ABC):
 
 
 @dataclass(frozen=True, repr=False)
-class SingleResult[T, E](Result[T, E]):
+class SingleLEGACYResult[T, E](LEGACY_Result[T, E]):
     """Результат одного значения"""
 
     _is_ok: bool
 
     _value: Optional[T]
     _error: Optional[E]
-    type Output = Result[T, E]
+    type Output = LEGACY_Result[T, E]
 
     @classmethod
     def error(cls, error: E) -> Output:
@@ -102,20 +102,20 @@ class SingleResult[T, E](Result[T, E]):
 
 # TODO Iterable[E] -> Stream
 
-class MultiErrorResult[T, E](Result[T, Iterable[E]]):
+class MultiErrorLEGACYResult[T, E](LEGACY_Result[T, Iterable[E]]):
 
     def __init__(self) -> None:
         # TODO stream
         self._errors: Final = list[E]()
 
-    def make(self, ok_maker: Callable[[], T]) -> Result[T, Iterable[E]]:
+    def make(self, ok_maker: Callable[[], T]) -> LEGACY_Result[T, Iterable[E]]:
         """Попытаться создать результат если не было ошибок"""
         if self.isOk():
-            return SingleResult.ok(ok_maker())
+            return SingleLEGACYResult.ok(ok_maker())
 
-        return SingleResult.error(self.getError())
+        return SingleLEGACYResult.error(self.getError())
 
-    def putSingle(self, result: Result[T, E]) -> Result[T, E]:
+    def putSingle(self, result: LEGACY_Result[T, E]) -> LEGACY_Result[T, E]:
         """Вернуть результат или поместить ошибку"""
         if result.isError():
             self.putOptionalError(result.getError())
@@ -126,7 +126,7 @@ class MultiErrorResult[T, E](Result[T, Iterable[E]]):
         if error is not None:
             self._errors.append(error)
 
-    def putMulti(self, result: Result[T, Iterable[E]]) -> Result[T, Iterable[E]]:
+    def putMulti(self, result: LEGACY_Result[T, Iterable[E]]) -> LEGACY_Result[T, Iterable[E]]:
         """Поместить результат, содержащий множественные ошибки"""
         if result.isError():
             self._errors.extend(result.getError())
@@ -143,7 +143,7 @@ class MultiErrorResult[T, E](Result[T, Iterable[E]]):
         return len(self._errors) == 0
 
 
-class ResultAccumulator[T, E](Result[Iterable[T], Iterable[E]]):
+class LEGACYResultAccumulator[T, E](LEGACY_Result[Iterable[T], Iterable[E]]):
     """Аккумулятор результатов"""
 
     def __init__(self) -> None:
@@ -151,21 +151,21 @@ class ResultAccumulator[T, E](Result[Iterable[T], Iterable[E]]):
         self._errors: Final = list[E]()
         self._results: Final = list[T]()
 
-    def mapSingle(self, ok_maker: Callable[[Iterable[T]], T]) -> Result[T, Iterable[E]]:
+    def mapSingle(self, ok_maker: Callable[[Iterable[T]], T]) -> LEGACY_Result[T, Iterable[E]]:
         """Попытаться создать результат если не было ошибок"""
         if self.isOk():
-            return SingleResult.ok(ok_maker(self._results))
+            return SingleLEGACYResult.ok(ok_maker(self._results))
 
-        return SingleResult.error(self.getError())
+        return SingleLEGACYResult.error(self.getError())
 
-    def putSingle(self, result: Result[T, E]) -> None:
+    def putSingle(self, result: LEGACY_Result[T, E]) -> None:
         """Положить результат в аккумулятор"""
         if result.isOk():
             self._putOk(result.unwrap())
         else:
             self.putOptionalError(result.getError())
 
-    def putMulti(self, result: Result[T, Iterable[E]]) -> None:
+    def putMulti(self, result: LEGACY_Result[T, Iterable[E]]) -> None:
         """Поместить результат, содержащий множественные ошибки"""
         if result.isOk():
             self._putOk(result.unwrap())
