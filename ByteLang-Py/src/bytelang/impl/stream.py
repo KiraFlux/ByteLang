@@ -1,4 +1,3 @@
-"""Streams"""
 from dataclasses import dataclass
 from typing import Final
 from typing import Iterable
@@ -6,9 +5,12 @@ from typing import MutableSequence
 from typing import Optional
 from typing import Sequence
 
+from bytelang.abc.stream import InputStream
+from bytelang.abc.stream import OutputStream
+
 
 @dataclass
-class InputStream[T]:
+class CollectionInputStream[T](InputStream[T]):
     """Поток входа (для записи)"""
 
     _items: MutableSequence[T]
@@ -26,20 +28,33 @@ class InputStream[T]:
         return self._items
 
 
-class OutputStream[T]:
-    """Поток вывода (для чтения)"""
+class CollectionOutputStream[T](OutputStream[T]):
+    """Поток выхода на основе коллекции"""
 
     def __init__(self, items: Sequence[T]) -> None:
         self._items: Final = items
         self._position = 0
 
     def peek(self) -> Optional[T]:
-        """Получить последнее значение"""
         if self._position < len(self._items):
             return self._items[self._position]
 
     def next(self) -> Optional[T]:
-        """Получить следующий элемент"""
         ret = self.peek()
         self._position += 1
         return ret
+
+
+class SingleOutputStream[T](OutputStream[T]):
+    """Потом выхода из одного элемента"""
+
+    def next(self) -> Optional[T]:
+        ret = self._item
+        self._item = None
+        return ret
+
+    def peek(self) -> Optional[T]:
+        return self._item
+
+    def __init__(self, item: T) -> None:
+        self._item: Optional[T] = item

@@ -8,7 +8,6 @@ from bytelang.abc.registry import Registry
 from bytelang.abc.semantic import SemanticContext
 from bytelang.core.bundle.env import EnvironmentBundle
 from bytelang.impl.semantizer.common import CommonSemanticContext
-from bytelang.impl.semantizer.env import EnvironmentSemanticContext
 
 
 @dataclass
@@ -44,6 +43,7 @@ def _test():
     from bytelang.impl.parser.sketch import SketchParser
     from bytelang.impl.registry.loader import CodeLoadingRegistry
     from bytelang.core.bundle.package import PackageBundle
+    from bytelang.impl.semantizer.env import EnvironmentSemanticContext
 
     from rustpy.exceptions import Panic
     from pathlib import Path
