@@ -5,7 +5,7 @@ from typing import Optional
 from bytelang.abc.parser import Parser
 from bytelang.core.LEGACY_result import LEGACY_Result
 from bytelang.core.LEGACY_result import SingleLEGACYResult
-from bytelang.abc.stream import OutputStream
+from bytelang.core.stream import OutputStream
 from bytelang.core.tokens import Token
 from bytelang.core.tokens import TokenType
 from bytelang.impl.node.directive.common import ConstDefine

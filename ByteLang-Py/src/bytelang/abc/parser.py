@@ -7,7 +7,7 @@ from typing import Iterable
 from typing import Optional
 
 from bytelang.abc.node import Node
-from bytelang.abc.stream import OutputStream
+from bytelang.core.stream import OutputStream
 from bytelang.core.tokens import Token
 from bytelang.core.tokens import TokenType
 from bytelang.core.LEGACY_result import MultiErrorLEGACYResult

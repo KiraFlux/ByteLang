@@ -4,14 +4,14 @@ from typing import Iterable
 from typing import TextIO
 
 from bytelang.abc.semantic import SemanticContext
-from bytelang.abc.stream import OutputStream
+from bytelang.core.stream import OutputStream
 from bytelang.core.lexer import Lexer
 from bytelang.core.LEGACY_result import LEGACY_Result
 from bytelang.core.tokens import Token
 from bytelang.impl.node.program import Program
 from bytelang.impl.parser.common import CommonParser
 from bytelang.impl.semantizer.common import CommonSemanticContext
-from bytelang.impl.stream import CollectionOutputStream
+from bytelang.core.stream import CollectionOutputStream
 
 
 @dataclass(frozen=True)
