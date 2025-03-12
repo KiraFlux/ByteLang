@@ -7,10 +7,10 @@ from typing import Sequence
 
 from bytelang.abc.node import Node
 from bytelang.abc.semantic import SemanticContext
-from bytelang.core.LEGACY_result import LEGACYResultAccumulator
-from bytelang.core.LEGACY_result import SingleLEGACYResult
 from bytelang.core.ops import Operator
+from bytelang.core.result import ErrOne
 from bytelang.core.result import LogResult
+from bytelang.core.result import ResultAccumulator
 
 
 @dataclass(frozen=True)
@@ -62,12 +62,12 @@ class PackageInstructionProfile:
         """Упаковка аргументов для вызова инструкции"""
 
         if (got := len(arguments)) != (need := len(self._arguments)):
-            return SingleLEGACYResult.error((f"Invalid arg count: {got} {need=}",))
+            return ErrOne(f"Invalid arg count: {got} {need=}")
 
-        ret = LEGACYResultAccumulator()
+        ret = ResultAccumulator()
 
         for (arg_id, arg_type_profile), arg_value in zip(self._arguments, arguments):
-            ret.putMulti(arg_type_profile.apply(arg_value, context).map(err=lambda errors: map(
+            ret.put(arg_type_profile.apply(arg_value, context).map(err=lambda errors: map(
                 lambda e: f"arg {arg_id}: {arg_type_profile} fail pass value {arg_value} : {e}", errors)))
 
         return ret.map(lambda packed_args: b"".join(packed_args))

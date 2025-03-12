@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterable
 from typing import Sequence
 
 from bytelang.abc.serializer import Serializable
 from bytelang.abc.serializer import Serializer
-from bytelang.core.LEGACY_result import LEGACY_Result
-from bytelang.core.LEGACY_result import LEGACYResultAccumulator
-from bytelang.core.LEGACY_result import SingleLEGACYResult
+from bytelang.core.result import ErrOne
+from bytelang.core.result import LogResult
+from bytelang.core.result import Ok
+from bytelang.core.result import ResultAccumulator
 
 
 @dataclass(frozen=True)
@@ -21,31 +21,31 @@ class ArraySerializer[T: Serializable](Serializer[Sequence[T]]):
     """Длинна массива"""
 
     @classmethod
-    def new(cls, item: Serializer[T], length: int) -> LEGACY_Result[ArraySerializer, str]:
+    def new(cls, item: Serializer[T], length: int) -> LogResult[ArraySerializer]:
         """Создать массив с проверкой"""
         if length < 1:
-            return SingleLEGACYResult.error(f"Array len not valid: {length}")
-        return SingleLEGACYResult.ok(cls(item, length))
+            return ErrOne(f"Array len not valid: {length}")
+        return Ok(cls(item, length))
 
-    def unpack(self, buffer: bytes) -> LEGACY_Result[T, Iterable[str]]:
-        ret = LEGACYResultAccumulator()
+    def unpack(self, buffer: bytes) -> LogResult[T]:
+        ret = ResultAccumulator()
 
         offset: int = 0
 
         for _ in range(self._length):
-            ret.putMulti(self._item_serializer.unpack(buffer[offset:offset + self._item_serializer.getSize()]))
+            ret.put(self._item_serializer.unpack(buffer[offset:offset + self._item_serializer.getSize()]))
             offset += self._item_serializer.getSize()
 
         return ret.map()
 
-    def pack(self, value: T) -> LEGACY_Result[bytes, Iterable[str]]:
+    def pack(self, value: T) -> LogResult[bytes]:
         if (got := len(value)) != self._length:
-            return SingleLEGACYResult.error((f"Expected: {self._length} ({self}), got {got} ({value}",))
+            return ErrOne(f"Expected: {self._length} ({self}), got {got} ({value}")
 
-        ret = LEGACYResultAccumulator()
+        ret = ResultAccumulator()
 
         for field_value in value:
-            ret.putMulti(self._item_serializer.pack(field_value))
+            ret.put(self._item_serializer.pack(field_value))
 
         return ret.map(lambda packed_fields: b"".join(packed_fields))
 

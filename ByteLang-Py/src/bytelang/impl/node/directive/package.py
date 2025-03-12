@@ -5,13 +5,12 @@ from __future__ import annotations
 from abc import ABC
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import Iterable
 
 from bytelang.abc.parser import Parser
 from bytelang.abc.profiles import PackageInstructionProfile
-from bytelang.core.LEGACY_result import MultiErrorLEGACYResult
-from bytelang.core.LEGACY_result import LEGACY_Result
-from bytelang.core.LEGACY_result import LEGACYResultAccumulator
+from bytelang.core.result import ErrOne
+from bytelang.core.result import LogResult
+from bytelang.core.result import ResultAccumulator
 from bytelang.core.tokens import TokenType
 from bytelang.impl.node.component import HasUniqueArguments
 from bytelang.impl.node.directive.super import Directive
@@ -25,7 +24,7 @@ class PackageDirective(Directive[PackageSemanticContext], ABC):
     """Директива, исполняемая в пакетах"""
 
     @abstractmethod
-    def accept(self, context: PackageSemanticContext) -> LEGACY_Result[None, Iterable[str]]:
+    def accept(self, context: PackageSemanticContext) -> LogResult[None]:
         pass
 
 
@@ -38,25 +37,28 @@ class InstructionDefine(PackageDirective, HasUniqueID, HasUniqueArguments[Field]
         return "inst"
 
     @classmethod
-    def parse(cls, parser: Parser) -> LEGACY_Result[Directive, Iterable[str]]:
-        ret = MultiErrorLEGACYResult()
+    def parse(cls, parser: Parser) -> LogResult[Directive]:
+        ret = ResultAccumulator()
 
-        _id = ret.putSingle(Identifier.parse(parser))
-        args = ret.putMulti(parser.braceArguments(lambda: Field.parse(parser), TokenType.OpenRound, TokenType.CloseRound))
+        _id = ret.put(Identifier.parse(parser))
+        args = ret.put(parser.braceArguments(lambda: Field.parse(parser), TokenType.OpenRound, TokenType.CloseRound))
 
-        return ret.make(lambda: cls(args.unwrap(), _id.unwrap()))
+        return ret.map(lambda _: cls(args.unwrap(), _id.unwrap()))
 
-    def accept(self, context: PackageSemanticContext) -> LEGACY_Result[None, Iterable[str]]:
-        ret_0 = MultiErrorLEGACYResult()
-        ret_0.putOptionalError(self.checkIdentifier(context.instruction_registry))
-        ret_0.putMulti(self.checkArguments())
+    def accept(self, context: PackageSemanticContext) -> LogResult[None]:
+        ret_0 = ResultAccumulator()
 
-        if ret_0.isError():
-            return ret_0.make(lambda: None)
+        s = self.checkIdentifier(context.instruction_registry)
 
-        ret_1 = LEGACYResultAccumulator()
+        if s is not None:
+            ret_0.put(ErrOne(s))
+
+        if ret_0.isErr():
+            return ret_0.map(lambda _: None)
+
+        ret_1 = ResultAccumulator()
 
         for arg in self.arguments:
-            ret_1.putMulti(arg.accept(context))
+            ret_1.put(arg.accept(context))
 
         return ret_1.map(lambda fields: context.instruction_registry.register(self.identifier.id, PackageInstructionProfile(fields)))

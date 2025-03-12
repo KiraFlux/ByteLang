@@ -11,7 +11,7 @@ from bytelang.impl.semantizer.common import CommonSemanticContext
 class PackageSemanticContext(CommonSemanticContext, SemanticContext[PackageBundle]):
     """Семантический анализатор пакета"""
 
-    instruction_registry: MutableRegistry[str, PackageInstructionProfile, str]
+    instruction_registry: MutableRegistry[str, PackageInstructionProfile]
     """Реестр инструкций"""
 
     def toBundle(self) -> PackageBundle:

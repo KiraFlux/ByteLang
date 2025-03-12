@@ -3,17 +3,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterable
 
 from bytelang.abc.parser import Parser
-from bytelang.core.LEGACY_result import MultiErrorLEGACYResult
-from bytelang.core.LEGACY_result import LEGACY_Result
+from bytelang.core.result import LogResult
+from bytelang.core.result import ResultAccumulator
 from bytelang.core.tokens import TokenType
+from bytelang.impl.node.component import HasUniqueArguments
 from bytelang.impl.node.expression import Expression
+from bytelang.impl.node.expression import HasExistingID
 from bytelang.impl.node.expression import Identifier
 from bytelang.impl.node.statement import Statement
-from bytelang.impl.node.component import HasUniqueArguments
-from bytelang.impl.node.expression import HasExistingID
 from bytelang.impl.semantizer.sketch import SketchSemanticContext
 
 
@@ -21,20 +20,20 @@ from bytelang.impl.semantizer.sketch import SketchSemanticContext
 class InstructionCall(Statement[SketchSemanticContext], HasExistingID, HasUniqueArguments[Expression]):
     """Узел вызова инструкции"""
 
-    def accept(self, context: SketchSemanticContext) -> LEGACY_Result[None, Iterable[str]]:
-        ret = MultiErrorLEGACYResult()
+    def accept(self, context: SketchSemanticContext) -> LogResult[None]:
+        ret = ResultAccumulator()
         pass  # TODO # TODO push to write stream (read / write streams)
 
         # ret.putOptionalError(self.checkIdentifier())
 
-        return ret.make(lambda: None)
+        return ret.map(lambda _: None)
 
     @classmethod
-    def parse(cls, parser: Parser) -> LEGACY_Result[InstructionCall, Iterable[str]]:
+    def parse(cls, parser: Parser) -> LogResult[InstructionCall]:
         """Парсинг инструкций"""
-        ret = MultiErrorLEGACYResult()
+        ret = ResultAccumulator()
 
-        _id = ret.putSingle(Identifier.parse(parser))
-        args = ret.putMulti(parser.arguments(lambda: Expression.parse(parser), TokenType.Comma, TokenType.StatementEnd))
+        _id = ret.put(Identifier.parse(parser))
+        args = ret.put(parser.arguments(lambda: Expression.parse(parser), TokenType.Comma, TokenType.StatementEnd))
 
-        return ret.make(lambda: cls(args.unwrap(), _id.unwrap()))
+        return ret.map(lambda _: cls(args.unwrap(), _id.unwrap()))

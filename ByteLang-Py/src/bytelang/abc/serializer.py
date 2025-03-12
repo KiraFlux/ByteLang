@@ -1,9 +1,8 @@
 from abc import ABC
 from abc import abstractmethod
-from typing import Iterable
 from typing import Sequence
 
-from bytelang.core.LEGACY_result import LEGACY_Result
+from bytelang.core.result import LogResult
 
 type _serializable = int | float
 type _serializable = Sequence[_serializable] | _serializable
@@ -16,11 +15,11 @@ class Serializer[T: Serializable](ABC):
     """Serializer - упаковка, распаковка данных"""
 
     @abstractmethod
-    def pack(self, value: T) -> LEGACY_Result[bytes, Iterable[str]]:
+    def pack(self, value: T) -> LogResult[bytes]:
         """Упаковать значение в соответсвующее байтовое представление"""
 
     @abstractmethod
-    def unpack(self, buffer: bytes) -> LEGACY_Result[T, Iterable[str]]:
+    def unpack(self, buffer: bytes) -> LogResult[T]:
         """Получить значение из соответствующего байтового представления"""
 
     @abstractmethod

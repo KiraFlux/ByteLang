@@ -15,10 +15,10 @@ from bytelang.abc.profiles import EnvironmentInstructionProfile
 from bytelang.abc.profiles import PackageInstructionProfile
 from bytelang.abc.registry import Registry
 from bytelang.abc.serializer import Serializer
-from bytelang.core.LEGACY_result import MultiErrorLEGACYResult
-from bytelang.core.LEGACY_result import LEGACY_Result
-from bytelang.core.LEGACY_result import LEGACYResultAccumulator
-from bytelang.core.LEGACY_result import SingleLEGACYResult
+from bytelang.core.result import ErrOne
+from bytelang.core.result import LogResult
+from bytelang.core.result import Ok
+from bytelang.core.result import ResultAccumulator
 from bytelang.core.tokens import TokenType
 from bytelang.impl.node.directive.super import Directive
 from bytelang.impl.node.expression import HasExistingID
@@ -30,7 +30,7 @@ class EnvironmentDirective(Directive[EnvironmentSemanticContext], ABC):
     """Директива, исполняемая в файлах конфигурации окружения"""
 
     @abstractmethod
-    def accept(self, context: EnvironmentSemanticContext) -> LEGACY_Result[None, Iterable[str]]:
+    def accept(self, context: EnvironmentSemanticContext) -> LogResult[None]:
         pass
 
 
@@ -49,10 +49,10 @@ class _SetEnvSpecialPointer(EnvironmentDirective, HasExistingID, ABC):
         """Получить установщик указателя"""
 
     @classmethod
-    def parse(cls, parser: Parser) -> LEGACY_Result[_SetEnvSpecialPointer, Iterable[str]]:
+    def parse(cls, parser: Parser) -> LogResult[_SetEnvSpecialPointer]:
         return Identifier.parse(parser).map(lambda _id: cls(_id))
 
-    def accept(self, context: EnvironmentSemanticContext) -> LEGACY_Result[None, Iterable[str]]:
+    def accept(self, context: EnvironmentSemanticContext) -> LogResult[None]:
         return context.primitive_serializers_registry.get(self.identifier.id).map(lambda s: self._getSetter(context)(s), lambda e: (e,))
 
 
@@ -108,76 +108,76 @@ class UsePackage(EnvironmentDirective, HasExistingID):
         return "use"
 
     @classmethod
-    def parse(cls, parser: Parser) -> LEGACY_Result[Directive, Iterable[str]]:
-        ret = MultiErrorLEGACYResult()
+    def parse(cls, parser: Parser) -> LogResult[Directive]:
+        ret = ResultAccumulator()
 
-        _package = ret.putMulti(Identifier.parse(parser))
-        _instructions = ret.putMulti(cls._parseUsedInstructions(parser))
+        _package = ret.put(Identifier.parse(parser))
+        _instructions = ret.put(cls._parseUsedInstructions(parser))
 
-        return ret.make(lambda: cls(_package.unwrap(), _instructions.unwrap()))
+        return ret.map(lambda _: cls(_package.unwrap(), _instructions.unwrap()))
 
-    def accept(self, context: EnvironmentSemanticContext) -> LEGACY_Result[None, Iterable[str]]:
+    def accept(self, context: EnvironmentSemanticContext) -> LogResult[None]:
         # что пакет существует
         package_result = context.package_registry.get(self.identifier.id)
 
         if package_result.isError():
-            return package_result.map(err=lambda e: (e,))
+            return package_result.map()
 
         # что выбранные инструкции существуют
         chosen_result = self._acceptChosenInstructions(package_result.unwrap().instructions)
 
-        if chosen_result.isError():
-            return chosen_result.flow()
+        if chosen_result.isErr():
+            return chosen_result.map()
 
         env_result = self._acceptEnvInstructions(chosen_result.unwrap(), context)
 
-        if env_result.isError():
-            return env_result.flow()
+        if env_result.isErr():
+            return env_result.map()
 
-        ret = MultiErrorLEGACYResult()
+        ret = ResultAccumulator()
 
         for env_inst_key, env_inst_value in env_result.unwrap().items():
             if context.instruction_registry.has(env_inst_key):
-                ret.putOptionalError(f"{env_inst_key} already exist in {context}")
+                ret.put(ErrOne(f"{env_inst_key} already exist in {context}"))
             else:
                 context.instruction_registry.register(env_inst_key, env_inst_value)
 
-        return ret.make(lambda: None)
+        return ret.map(lambda _: None)
 
     @staticmethod
     def _acceptEnvInstructions(
             package_instructions: Mapping[str, PackageInstructionProfile],
             context: EnvironmentSemanticContext
-    ) -> LEGACY_Result[Mapping[str, EnvironmentInstructionProfile], Iterable[str]]:
+    ) -> LogResult[Mapping[str, EnvironmentInstructionProfile]]:
 
         if context.instruction_pointer is None:
-            return SingleLEGACYResult.error((f"{context.instruction_pointer=}",))
+            return ErrOne(f"{context.instruction_pointer=}")
 
-        ret = LEGACYResultAccumulator()
+        ret = ResultAccumulator()
         package_instruction_index_offset: int = len(context.instruction_registry.getMappingView())
 
         for offset, (inst_key, package_inst) in enumerate(package_instructions.items()):
-            ret.putMulti(
+            ret.put(
                 context.instruction_pointer.pack(package_instruction_index_offset + offset)
                 .map(lambda code: (inst_key, EnvironmentInstructionProfile(package_inst, code)))
             )
 
         return ret.map(lambda items: dict(items))
 
-    def _acceptChosenInstructions(self, instructions: Registry[str, PackageInstructionProfile, str]) -> LEGACY_Result[Mapping[str, PackageInstructionProfile], Iterable[str]]:
+    def _acceptChosenInstructions(self, instructions: Registry[str, PackageInstructionProfile]) -> LogResult[Mapping[str, PackageInstructionProfile]]:
         if self.selected_instructions is None:
-            return SingleLEGACYResult.ok(instructions.getMappingView())
+            return Ok(instructions.getMappingView())
 
-        ret = LEGACYResultAccumulator()
+        ret = ResultAccumulator()
 
         for selected in self.selected_instructions:
-            ret.putSingle(instructions.get(selected.id).map(lambda ins: (selected.id, ins)))
+            ret.put(instructions.get(selected.id).map(lambda ins: (selected.id, ins)))
 
         return ret.map(lambda items: dict(items))
 
     @classmethod
-    def _parseUsedInstructions(cls, parser: Parser) -> LEGACY_Result[Optional[Iterable[Identifier]], Iterable[str]]:
+    def _parseUsedInstructions(cls, parser: Parser) -> LogResult[Optional[Iterable[Identifier]]]:
         if parser.tokens.peek().type == TokenType.OpenFigure:
             return parser.braceArguments(lambda: Identifier.parse(parser), TokenType.OpenFigure, TokenType.CloseFigure)
 
-        return SingleLEGACYResult.ok(None)
+        return Ok(None)

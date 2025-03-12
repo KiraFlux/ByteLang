@@ -2,14 +2,13 @@
 Интерфейс компилятора
 """
 from dataclasses import dataclass
-from time import time
 from typing import BinaryIO
 from typing import Iterable
 from typing import TextIO
 
-from bytelang.core.lexer import Lexer
 from bytelang.abc.parser import Parser
-from bytelang.core.LEGACY_result import LEGACY_Result
+from bytelang.core.lexer import Lexer
+from bytelang.core.result import LogResult
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -29,31 +28,5 @@ class Compiler:
     lexer: Lexer
     parser: Parser
 
-    def run(self, source: TextIO, bytecode: BinaryIO) -> LEGACY_Result[CompileInfo, Iterable[str]]:
+    def run(self, source: TextIO, bytecode: BinaryIO) -> LogResult[CompileInfo, Iterable[str]]:
         """Преобразовать исходный код в байткод"""
-        start_time = time()
-
-        # Лексический анализ
-
-        lexer_result = self.lexer.run(source)
-
-        if lexer_result.isError():
-            return LEGACY_Result.error(lexer_result.getError())
-
-        tokens = lexer_result.unwrap()
-
-        # Генерация AST
-
-        parser_result = self.parser.run(tokens)
-
-        if parser_result.isError():
-            return LEGACY_Result.error(parser_result.getError())
-
-        program = parser_result.unwrap()
-
-        # Завершение работы
-
-        return LEGACY_Result.ok(CompileInfo(
-            compile_time=(time() - start_time),
-            token_count=len(tokens)
-        ))

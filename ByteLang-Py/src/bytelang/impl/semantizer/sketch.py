@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Iterable
 from typing import Optional
 
 from bytelang.abc.profiles import RValueProfile

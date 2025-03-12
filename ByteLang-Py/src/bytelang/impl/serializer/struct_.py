@@ -1,35 +1,34 @@
-from typing import Iterable
 from typing import Sequence
 
 from bytelang.abc.serializer import Serializable
 from bytelang.abc.serializer import Serializer
-from bytelang.core.LEGACY_result import LEGACY_Result
-from bytelang.core.LEGACY_result import LEGACYResultAccumulator
-from bytelang.core.LEGACY_result import SingleLEGACYResult
+from bytelang.core.result import ErrOne
+from bytelang.core.result import LogResult
+from bytelang.core.result import ResultAccumulator
 
 
 class StructSerializer[T: Sequence[Serializable]](Serializer[T]):
     """Объединение нескольких Serializer"""
 
-    def unpack(self, buffer: bytes) -> LEGACY_Result[T, Iterable[str]]:
-        ret = LEGACYResultAccumulator()
+    def unpack(self, buffer: bytes) -> LogResult[T]:
+        ret = ResultAccumulator()
 
         offset: int = 0
 
         for field in self._fields:
-            ret.putMulti(field.unpack(buffer[offset:offset + field.getSize()]))
+            ret.put(field.unpack(buffer[offset:offset + field.getSize()]))
             offset += field.getSize()
 
         return ret.map()
 
-    def pack(self, value: T) -> LEGACY_Result[bytes, Iterable[str]]:
+    def pack(self, value: T) -> LogResult[bytes]:
         if (got := len(value)) != (expected := len(self._fields)):
-            return SingleLEGACYResult.error((f"Expected: {expected} ({self}), got {got} ({value}",))
+            return ErrOne(f"Expected: {expected} ({self}), got {got} ({value}")
 
-        ret = LEGACYResultAccumulator()
+        ret = ResultAccumulator()
 
         for field, field_value in zip(self._fields, value):
-            ret.putMulti(field.pack(field_value))
+            ret.put(field.pack(field_value))
 
         return ret.map(lambda packed_fields: b"".join(packed_fields))
 
