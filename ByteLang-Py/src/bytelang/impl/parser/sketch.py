@@ -13,7 +13,7 @@ from bytelang.impl.node.statement import Statement
 from bytelang.impl.parser.common import CommonParser
 
 
-class SketchParser(CommonParser[Statement]):
+class SketchParser(CommonParser):
     """Парсер скетча"""
 
     @classmethod

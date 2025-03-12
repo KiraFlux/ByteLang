@@ -22,7 +22,7 @@ class Loader[T, S: SemanticContext]:
     _parser_maker: Callable[[OutputStream[Token]], CommonParser]
     _special_context_maker: Callable[[CommonSemanticContext], S]
 
-    def run(self, source: TextIO) -> Result[T, Iterable[str]]:
+    def load(self, source: TextIO) -> Result[T, Iterable[str]]:
         """Преобразовать исходный код в Bundle"""
 
         tokens = self._lexer.run(source)

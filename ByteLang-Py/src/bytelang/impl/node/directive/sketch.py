@@ -13,6 +13,7 @@ from bytelang.impl.node.directive.super import Directive
 from bytelang.impl.node.expression import HasExistingID
 from bytelang.impl.node.expression import HasUniqueID
 from bytelang.impl.node.expression import Identifier
+from bytelang.impl.profiles.rvalue import IntegerRV
 from bytelang.impl.semantizer.sketch import SketchSemanticContext
 
 
@@ -68,4 +69,4 @@ class MarkDefine(SourceDirective, HasUniqueID):
         if err is None:
             return SingleResult.error(err)
 
-        return SingleResult.ok(None)
+        return SingleResult.ok(lambda: context.mark_registry.register(self.identifier.id, IntegerRV.new(len(context.instructions_code))))

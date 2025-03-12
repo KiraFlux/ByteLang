@@ -13,7 +13,6 @@ from bytelang.abc.serializer import Serializer
 from bytelang.core.bundle.env import EnvironmentBundle
 from bytelang.core.bundle.package import PackageBundle
 from bytelang.core.bundle.pointer import PointersBundle
-from bytelang.impl.registry.loader import CodeLoadingRegistry
 from bytelang.impl.semantizer.common import CommonSemanticContext
 
 
@@ -60,6 +59,7 @@ def _test():
     from bytelang.core.lexer import Lexer
     from bytelang.core.tokens import TokenType
     from bytelang.core.loader import Loader
+    from bytelang.impl.registry.loader import CodeLoadingRegistry
 
     from rustpy.exceptions import Panic
     from pathlib import Path

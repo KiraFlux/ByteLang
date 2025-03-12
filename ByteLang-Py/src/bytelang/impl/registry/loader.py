@@ -18,7 +18,7 @@ class CodeLoadingRegistry[Bnd, S: SemanticContext](CatalogRegistry[Bnd, Iterable
     def _loadFile(self, filepath: Path) -> Result[Bnd, Iterable[str]]:
         try:
             with open(filepath) as source:
-                return self._loader.run(source)
+                return self._loader.load(source)
 
         except OSError as e:
             return SingleResult.error(f"Cannot open {filepath}: {e}")
