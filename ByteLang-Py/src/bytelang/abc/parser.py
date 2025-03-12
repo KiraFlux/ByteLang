@@ -7,13 +7,13 @@ from typing import Iterable
 from typing import Optional
 
 from bytelang.abc.node import Node
+from bytelang.core.result import ErrOne
+from bytelang.core.result import LogResult
+from bytelang.core.result import Ok
+from bytelang.core.result import ResultAccumulator
 from bytelang.core.stream import OutputStream
 from bytelang.core.tokens import Token
 from bytelang.core.tokens import TokenType
-from bytelang.core.LEGACY_result import MultiErrorLEGACYResult
-from bytelang.core.LEGACY_result import LEGACY_Result
-from bytelang.core.LEGACY_result import LEGACYResultAccumulator
-from bytelang.core.LEGACY_result import SingleLEGACYResult
 
 
 @dataclass
@@ -22,25 +22,25 @@ class Parser[Stmt: Node](ABC):
 
     tokens: OutputStream[Token]
 
-    def consume(self, token_type: TokenType) -> LEGACY_Result[Token, str]:
+    def consume(self, token_type: TokenType) -> LogResult[Token]:
         """Получить ожидаемый токен"""
 
         token = self.tokens.next()
 
         if token is None:
-            return SingleLEGACYResult.error(f"Expect: {token_type}, got EOF")
+            return ErrOne(f"Expect: {token_type}, got EOF")
 
         if token.type != token_type:
-            return SingleLEGACYResult.error(f"Expect: {token_type}, got {token}")
+            return ErrOne(f"Expect: {token_type}, got {token}")
 
-        return SingleLEGACYResult.ok(token)
+        return Ok(token)
 
     def arguments[T: Node](
             self,
-            element_parser: Callable[[], LEGACY_Result[T, Iterable[str]]],
+            element_parser: Callable[[], LogResult[T]],
             delimiter: TokenType,
             terminator: TokenType
-    ) -> LEGACY_Result[Iterable[T], Iterable[str]]:
+    ) -> LogResult[Iterable[T]]:
         """
         Разделенные элементы, заканчивающиеся токеном
         :param element_parser: Способ парсинга элемента
@@ -51,35 +51,35 @@ class Parser[Stmt: Node](ABC):
 
         if self.tokens.peek().type == terminator:
             self.tokens.next()
-            return SingleLEGACYResult.ok(())
+            return Ok(())
 
-        resulter: LEGACYResultAccumulator[T, str] = LEGACYResultAccumulator()
+        ret = ResultAccumulator()
 
         while True:
-            resulter.putMulti(element_parser())
+            ret.put(element_parser())
 
             token = self.tokens.next()
 
             if token is None:
-                resulter.putOptionalError(f"Ожидался токен")
+                ret.put(ErrOne(f"Ожидался токен"))
                 break
 
             if token.type == terminator:
                 break
 
             if token.type != delimiter:
-                resulter.putOptionalError(f"Expected '{delimiter}' between arguments")
+                ret.put(ErrOne(f"Expected '{delimiter}' between arguments"))
                 break
 
-        return resulter
+        return ret.map()
 
     def braceArguments[T: Node](
             self,
-            element_parser: Callable[[], LEGACY_Result[T, Iterable[str]]],
+            element_parser: Callable[[], LogResult[T]],
             brace_open: TokenType,
             brace_close: TokenType,
             delimiter: TokenType = TokenType.Comma
-    ) -> LEGACY_Result[Iterable[T], Iterable[str]]:
+    ) -> LogResult[Iterable[T]]:
         """
         Парсинг аргументов в скобках
         :param element_parser: Парсер элементов
@@ -89,23 +89,23 @@ class Parser[Stmt: Node](ABC):
         :return: Последовательность узлов согласно функции парсера элементов
         """
 
-        ret = MultiErrorLEGACYResult()
+        ret = ResultAccumulator()
 
-        ret.putSingle(self.consume(brace_open))
-        args = ret.putMulti(self.arguments(element_parser, delimiter, brace_close))
+        ret.put(self.consume(brace_open))
+        args = ret.put(self.arguments(element_parser, delimiter, brace_close))
 
-        return ret.make(lambda: args.unwrap())
+        return ret.map(lambda _: args.unwrap())
 
-    def statement(self) -> LEGACY_Result[Optional[Stmt], Iterable[str]]:
+    def statement(self) -> LogResult[Optional[Stmt]]:
         """Парсинг statement"""
 
         token = self.tokens.peek()
         self.tokens.next()
 
         if token.type == TokenType.StatementEnd:
-            return SingleLEGACYResult.ok(None)
+            return Ok(None)
 
-        return SingleLEGACYResult.error((f"Неуместный токен: {token}",))
+        return ErrOne(f"Неуместный токен: {token}")
 
 
 class Parsable[T: Node]:
@@ -113,5 +113,5 @@ class Parsable[T: Node]:
 
     @classmethod
     @abstractmethod
-    def parse(cls, parser: Parser) -> LEGACY_Result[T, Iterable[str]]:
+    def parse(cls, parser: Parser) -> LogResult[T]:
         """Парсинг узла с помощью парсера"""

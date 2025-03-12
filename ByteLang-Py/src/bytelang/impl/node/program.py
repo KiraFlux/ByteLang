@@ -1,14 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterable
 from typing import Sequence
 
 from bytelang.abc.parser import Parser
 from bytelang.abc.semantic import SemanticContext
-from bytelang.core.LEGACY_result import MultiErrorLEGACYResult
-from bytelang.core.LEGACY_result import LEGACY_Result
-from bytelang.core.LEGACY_result import LEGACYResultAccumulator
+from bytelang.core.result import LogResult
+from bytelang.core.result import ResultAccumulator
 from bytelang.impl.node.statement import Statement
 from bytelang.impl.node.super import SuperNode
 
@@ -20,19 +18,19 @@ class Program[S: SemanticContext](SuperNode[S, None, "Program"]):
     statements: Sequence[Statement]
     """Statements"""
 
-    def accept(self, context: S) -> LEGACY_Result[None, Iterable[str]]:
-        ret = MultiErrorLEGACYResult()
+    def accept(self, context: S) -> LogResult[None]:
+        ret = ResultAccumulator()
 
         for statement in self.statements:
-            ret.putMulti(statement.accept(context))
+            ret.put(statement.accept(context))
 
-        return ret.make(lambda: None)
+        return ret.map(lambda _: None)
 
     @classmethod
-    def parse(cls, parser: Parser) -> LEGACY_Result[Program, Iterable[str]]:
-        resulter = LEGACYResultAccumulator()
+    def parse(cls, parser: Parser) -> LogResult[Program]:
+        ret = ResultAccumulator()
 
         while parser.tokens.peek() is not None:
-            resulter.putMulti(parser.statement())
+            ret.put(parser.statement())
 
-        return resulter.mapSingle(lambda statements: Program(tuple(filter(None.__ne__, statements))))
+        return ret.map(lambda statements: Program(tuple(filter(None.__ne__, statements))))

@@ -14,13 +14,13 @@ from bytelang.impl.semantizer.common import CommonSemanticContext
 class SketchSemanticContext(CommonSemanticContext, SemanticContext[NotImplemented]):
     """Контекст семантического анализа скетча"""
 
-    environment_registry: Registry[str, EnvironmentBundle, Iterable[str]]
+    environment_registry: Registry[str, EnvironmentBundle]
     """Реестр окружений"""
 
     selected_environment: Optional[EnvironmentBundle]
     """Выбранное окружение"""
 
-    mark_registry: MutableRegistry[str, RValueProfile, str]
+    mark_registry: MutableRegistry[str, RValueProfile]
     """Реестр меток"""
 
     instructions_code: bytearray  # todo Byte Stream

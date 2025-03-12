@@ -5,12 +5,11 @@ from __future__ import annotations
 from abc import ABC
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import Iterable
 
 from bytelang.abc.parser import Parser
-from bytelang.core.LEGACY_result import MultiErrorLEGACYResult
-from bytelang.core.LEGACY_result import LEGACY_Result
-from bytelang.core.LEGACY_result import LEGACYResultAccumulator
+from bytelang.core.result import ErrOne
+from bytelang.core.result import LogResult
+from bytelang.core.result import ResultAccumulator
 from bytelang.core.tokens import TokenType
 from bytelang.impl.node.component import HasUniqueArguments
 from bytelang.impl.node.directive.super import Directive
@@ -28,7 +27,7 @@ class CommonDirective(Directive[CommonSemanticContext], ABC):
     """Директива общего назначения"""
 
     @abstractmethod
-    def accept(self, context: CommonSemanticContext) -> LEGACY_Result[None, Iterable[str]]:
+    def accept(self, context: CommonSemanticContext) -> LogResult[None]:
         pass
 
 
@@ -43,23 +42,27 @@ class ConstDefine(CommonDirective, HasUniqueID):
     def getIdentifier(cls) -> str:
         return "const"
 
-    def accept(self, context: CommonSemanticContext) -> LEGACY_Result[None, Iterable[str]]:
-        ret = MultiErrorLEGACYResult()
+    def accept(self, context: CommonSemanticContext) -> LogResult[None]:
+        ret = ResultAccumulator()
 
-        ret.putOptionalError(self.checkIdentifier(context.const_registry))
-        expr_value = ret.putMulti(self.expression.accept(context))
+        maybe_already_declared = self.checkIdentifier(context.const_registry)
 
-        return ret.make(lambda: context.const_registry.register(self.identifier.id, expr_value.unwrap()))
+        if maybe_already_declared is not None:
+            ret.put(ErrOne(maybe_already_declared))
+
+        expr_value = ret.put(self.expression.accept(context))
+
+        return ret.map(lambda _: context.const_registry.register(self.identifier.id, expr_value.unwrap()))
 
     @classmethod
-    def parse(cls, parser: Parser) -> LEGACY_Result[Directive, Iterable[str]]:
-        ret = MultiErrorLEGACYResult()
+    def parse(cls, parser: Parser) -> LogResult[Directive]:
+        ret = ResultAccumulator()
 
-        _id = ret.putSingle(Identifier.parse(parser))
-        ret.putSingle(parser.consume(TokenType.Assignment))
-        expr = ret.putMulti(Expression.parse(parser))
+        _id = ret.put(Identifier.parse(parser))
+        ret.put(parser.consume(TokenType.Assignment))
+        expr = ret.put(Expression.parse(parser))
 
-        return ret.make(lambda: cls(_id.unwrap(), expr.unwrap()))
+        return ret.map(lambda _: cls(_id.unwrap(), expr.unwrap()))
 
 
 @dataclass(frozen=True)
@@ -73,22 +76,26 @@ class TypeAliasDefine(CommonDirective, HasUniqueID):
         return "type"
 
     @classmethod
-    def parse(cls, parser: Parser) -> LEGACY_Result[Directive, Iterable[str]]:
-        ret = MultiErrorLEGACYResult()
+    def parse(cls, parser: Parser) -> LogResult[Directive]:
+        ret = ResultAccumulator()
 
-        _id = ret.putMulti(Identifier.parse(parser))
-        ret.putSingle(parser.consume(TokenType.Assignment))
-        _type = ret.putMulti(TypeNode.parse(parser))
+        _id = ret.put(Identifier.parse(parser))
+        ret.put(parser.consume(TokenType.Assignment))
+        _type = ret.put(TypeNode.parse(parser))
 
-        return ret.make(lambda: cls(_id.unwrap(), _type.unwrap()))
+        return ret.map(lambda _: cls(_id.unwrap(), _type.unwrap()))
 
-    def accept(self, context: CommonSemanticContext) -> LEGACY_Result[None, Iterable[str]]:
-        ret = MultiErrorLEGACYResult()
+    def accept(self, context: CommonSemanticContext) -> LogResult[None]:
+        ret = ResultAccumulator()
 
-        ret.putOptionalError(self.checkIdentifier(context.type_registry))
-        profile = ret.putMulti(self.type.accept(context))
+        s = self.checkIdentifier(context.type_registry)
 
-        return ret.make(lambda: context.type_registry.register(self.identifier.id, profile.unwrap()))
+        if s is not None:
+            ret.put(ErrOne(s))
+
+        profile = ret.put(self.type.accept(context))
+
+        return ret.map(lambda _: context.type_registry.register(self.identifier.id, profile.unwrap()))
 
 
 @dataclass(frozen=True)
@@ -100,27 +107,29 @@ class StructDefine(CommonDirective, HasUniqueID, HasUniqueArguments[Field]):
         return "struct"
 
     @classmethod
-    def parse(cls, parser: Parser) -> LEGACY_Result[Directive, Iterable[str]]:
-        ret = MultiErrorLEGACYResult()
+    def parse(cls, parser: Parser) -> LogResult[Directive]:
+        ret = ResultAccumulator()
 
-        _id = ret.putSingle(Identifier.parse(parser))
-        fields = ret.putMulti(parser.braceArguments(lambda: Field.parse(parser), TokenType.OpenFigure, TokenType.CloseFigure))
+        _id = ret.put(Identifier.parse(parser))
+        fields = ret.put(parser.braceArguments(lambda: Field.parse(parser), TokenType.OpenFigure, TokenType.CloseFigure))
 
-        return ret.make(lambda: cls(fields.unwrap(), _id.unwrap()))
+        return ret.map(lambda _: cls(fields.unwrap(), _id.unwrap()))
 
-    def accept(self, context: CommonSemanticContext) -> LEGACY_Result[None, Iterable[str]]:
-        ret2 = MultiErrorLEGACYResult()
+    def accept(self, context: CommonSemanticContext) -> LogResult[None]:
+        ret2 = ResultAccumulator()
 
-        ret2.putOptionalError(self.checkIdentifier(context.type_registry))
-        ret2.putMulti(self.checkArguments())
+        s = self.checkIdentifier(context.type_registry)
 
-        if ret2.isError():
-            return ret2.make(lambda: None)
+        if s is not None:
+            ret2.put(ErrOne(s))
 
-        ret = LEGACYResultAccumulator()
+        if ret2.isErr():
+            return ret2.map(lambda _: None)
+
+        ret = ResultAccumulator()
 
         for field in self.arguments:
-            ret.putMulti(field.accept(context))
+            ret.put(field.accept(context))
 
         return ret.map(lambda _: context.type_registry.register(self.identifier.id, StructTypeProfile(dict(ret.unwrap()))))
 
@@ -137,19 +146,17 @@ class MacroDefine(CommonDirective, HasUniqueID, HasUniqueArguments[Identifier]):
         return "macro"
 
     @classmethod
-    def parse(cls, parser: Parser) -> LEGACY_Result[Directive, Iterable[str]]:
-        ret = MultiErrorLEGACYResult()
+    def parse(cls, parser: Parser) -> LogResult[Directive]:
+        ret = ResultAccumulator()
 
-        _id = ret.putSingle(Identifier.parse(parser))
-        args = ret.putMulti(parser.braceArguments(lambda: Identifier.parse(parser), TokenType.OpenRound, TokenType.CloseRound))
-        ret.putSingle(parser.consume(TokenType.Arrow))
-        expr = ret.putMulti(Expression.parse(parser))
+        _id = ret.put(Identifier.parse(parser))
+        args = ret.put(parser.braceArguments(lambda: Identifier.parse(parser), TokenType.OpenRound, TokenType.CloseRound))
+        ret.put(parser.consume(TokenType.Arrow))
+        expr = ret.put(Expression.parse(parser))
 
-        return ret.make(lambda: cls(args.unwrap(), _id.unwrap(), expr.unwrap()))
+        return ret.map(lambda _: cls(args.unwrap(), _id.unwrap(), expr.unwrap()))
 
-    def accept(self, context: CommonSemanticContext) -> LEGACY_Result[None, Iterable[str]]:
-        ret = MultiErrorLEGACYResult()
-
-        ret.putMulti(self.checkArguments())
-
-        return ret.make(lambda: context.macro_registry.register(self.identifier.id, MacroProfileImpl(tuple(self.arguments), self.template)))
+    def accept(self, context: CommonSemanticContext) -> LogResult[None]:
+        ret = ResultAccumulator()
+        ret.put(self.checkArguments())
+        return ret.map(lambda _: context.macro_registry.register(self.identifier.id, MacroProfileImpl(tuple(self.arguments), self.template)))

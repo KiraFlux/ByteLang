@@ -3,8 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable
 
-from bytelang.core.LEGACY_result import LEGACY_Result
-from bytelang.core.LEGACY_result import LEGACYResultAccumulator
+from bytelang.core.result import ErrOne
+from bytelang.core.result import LogResult
+from bytelang.core.result import ResultAccumulator
 from bytelang.impl.node.super import SuperNode
 
 
@@ -15,15 +16,15 @@ class HasUniqueArguments[T: SuperNode]:
     arguments: Iterable[T]
     """Аргументы узла"""
 
-    def checkArguments(self) -> LEGACY_Result[Iterable[T], Iterable[str]]:
+    def checkArguments(self) -> LogResult[Iterable[T]]:
         """Проверить аргументы на уникальность"""
-        ret = LEGACYResultAccumulator()
+        ret = ResultAccumulator()
         used_args = set[T]()
 
         for arg in self.arguments:
             if arg in used_args:
-                ret.putOptionalError(f"Argument already declared: {arg} ({self.arguments})")
+                ret.put(ErrOne(f"Argument already declared: {arg} ({self.arguments})"))
 
             used_args.add(arg)
 
-        return ret
+        return ret.map()

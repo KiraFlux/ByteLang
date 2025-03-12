@@ -10,9 +10,13 @@ from typing import Iterable
 from typing import Optional
 
 from bytelang.core.stream import CollectionInputStream
-from bytelang.core.stream import CollectionOutputStream
 from bytelang.core.stream import OutputStream
+from bytelang.core.stream import SingleOutputStream
 from rustpy.exceptions import Panic
+
+
+def _pass[V](x: V) -> V:
+    return x
 
 
 class _BasicResult[T, E](ABC):
@@ -48,8 +52,12 @@ class Result[T, E](_BasicResult[T, E]):
         """Result[T, E] -> Optional[E]"""
         return self._value if self.isErr() else None
 
-    def map[U](self, f: Callable[[T], U]) -> Result[U, E]:
+    def map[U](self, f: Callable[[T], U] = _pass) -> Result[U, E]:
         return Ok(f(self._value)) if self.isOk() else self
+
+    def andThen[U](self, f: Callable[[T], Result[U, E]]) -> Result[U, E]:
+        """Комбинатор And Then"""
+        return f(self._value) if self.isOk() else self
 
     def mapErr[F](self, f: Callable[[E], F]) -> Result[T, F]:
         """Преобразовать ошибку"""
@@ -74,15 +82,19 @@ def Err[E](error: E) -> Result[Any, E]:
     return Result(_is_ok=False, _value=error)
 
 
-def _pass[V](x: V) -> V:
-    return x
+type LogResult[T] = Result[T, OutputStream[str]]
+
+
+def ErrOne[T](error: str) -> LogResult[T]:
+    """Создать единичную ошибку"""
+    return Err(SingleOutputStream(error))
 
 
 class ResultAccumulator[T, E](_BasicResult[T, OutputStream[E]]):
     """Аккумулятор результатов"""
 
-    def map[U](self, f: Callable[[OutputStream[T]], U] = _pass) -> Result[U, OutputStream[E]]:
-        return Ok(CollectionOutputStream(tuple(map(f, self._items.getItems())))) if self.isOk() else Err(self._errors)
+    def map[U](self, f: Callable[[Iterable[T]], U] = _pass) -> Result[U, OutputStream[E]]:
+        return Ok(f(self._items.getItems())) if self.isOk() else Err(self._errors)
 
     def isOk(self) -> bool:
         return len(self._errors.getItems()) == 0
@@ -97,6 +109,9 @@ class ResultAccumulator[T, E](_BasicResult[T, OutputStream[E]]):
             self._errors.extend(result.err().getItems())
 
         return result
+
+    def unwrap(self) -> Iterable[T]:
+        return self._items.getItems() if self.isOk() else Err(self._errors).unwrap()
 
     def __init__(self) -> None:
         self._errors = CollectionInputStream[E](list())

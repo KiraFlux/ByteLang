@@ -3,7 +3,7 @@ from itertools import chain
 from typing import Iterable
 from typing import Optional
 
-from bytelang.core.LEGACY_result import LEGACY_Result
+from bytelang.core.result import LogResult
 from bytelang.core.tokens import TokenType
 from bytelang.impl.node.directive.sketch import MarkDefine
 from bytelang.impl.node.directive.sketch import SelectEnvironment
@@ -20,7 +20,7 @@ class SketchParser(CommonParser):
     def getDirectives(cls) -> Iterable[type[Directive]]:
         return chain(super().getDirectives(), (SelectEnvironment, MarkDefine))
 
-    def statement(self) -> LEGACY_Result[Optional[Statement], Iterable[str]]:
+    def statement(self) -> LogResult[Optional[Statement], Iterable[str]]:
         if self.tokens.peek().type == TokenType.Identifier:
             return InstructionCall.parse(self)
 

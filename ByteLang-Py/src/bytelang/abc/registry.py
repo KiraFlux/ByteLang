@@ -7,17 +7,17 @@ from typing import Final
 from typing import Iterable
 from typing import Mapping
 
-from bytelang.core.LEGACY_result import LEGACY_Result
+from bytelang.core.result import LogResult
 
 
-class Registry[Key, Item, Err](ABC):
+class Registry[Key, Item](ABC):
     """Реестр"""
 
     def __init__(self) -> None:
         self._items = dict[Key, Item]()
 
     @abstractmethod
-    def get(self, key: Key) -> LEGACY_Result[Item, Err]:
+    def get(self, key: Key) -> LogResult[Item]:
         """Получить предмет по ключу"""
 
     def has(self, key: Key) -> bool:
@@ -33,7 +33,7 @@ class Registry[Key, Item, Err](ABC):
         return self._items
 
 
-class MutableRegistry[Key, Item, Err](Registry[Key, Item, Err], ABC):
+class MutableRegistry[Key, Item](Registry[Key, Item], ABC):
     """Интерфейс позволяет добавлять элементы налету"""
 
     def register(self, key: Key, item: Item) -> None:
@@ -45,10 +45,10 @@ class MutableRegistry[Key, Item, Err](Registry[Key, Item, Err], ABC):
         self._items.update(items)
 
 
-class LazyRegistry[Key, Item, Err](Registry[Key, Item, Err], ABC):
+class LazyRegistry[Key, Item](Registry[Key, Item], ABC):
     """Ленивый реестр - загрузка происходит по мере необходимости"""
 
-    def get(self, key: Key) -> LEGACY_Result[Item, Err]:
+    def get(self, key: Key) -> LogResult[Item]:
         if (ret := self._items.get(key)) is not None:
             return ret
 
@@ -60,11 +60,11 @@ class LazyRegistry[Key, Item, Err](Registry[Key, Item, Err], ABC):
         return ret
 
     @abstractmethod
-    def _load(self, key: Key) -> LEGACY_Result[Item, Err]:
+    def _load(self, key: Key) -> LogResult[Item]:
         """Загрузить предмет"""
 
 
-class CatalogRegistry[Item, Err](LazyRegistry[str, Item, Err], ABC):
+class CatalogRegistry[Item](LazyRegistry[str, Item], ABC):
     """Каталоговый реестр - загрузка файлов по мере необходимости"""
 
     def __init__(self, catalog: Path, extension: str) -> None:
@@ -73,10 +73,10 @@ class CatalogRegistry[Item, Err](LazyRegistry[str, Item, Err], ABC):
         self._extension: Final[str] = extension
 
     @abstractmethod
-    def _loadFile(self, filepath: Path) -> LEGACY_Result[Item, Err]:
+    def _loadFile(self, filepath: Path) -> LogResult[Item]:
         """Загрузить из файла"""
 
-    def _load(self, key: str) -> LEGACY_Result[Item, Err]:
+    def _load(self, key: str) -> LogResult[Item]:
         return self._loadFile(self.__keyToPath(key))
 
     def __keyToPath(self, key: str) -> Path:

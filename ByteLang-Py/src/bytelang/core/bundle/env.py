@@ -9,7 +9,7 @@ from bytelang.core.bundle.pointer import PointersBundle
 class EnvironmentBundle:
     """Набор окружения"""
 
-    instructions: Registry[str, EnvironmentInstructionProfile, str]
+    instructions: Registry[str, EnvironmentInstructionProfile]
     """Инструкции окружения"""
 
     pointers: PointersBundle

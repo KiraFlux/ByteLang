@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from enum import Enum
 from enum import auto
+from re import Pattern
 from typing import Callable
 from typing import Optional
 
@@ -200,9 +202,9 @@ class TokenType(Enum):
             return self.value.rvalue_maker
 
     @classmethod
-    def build_regex(cls) -> str:
+    def build_regex(cls) -> Pattern[str]:
         """Создает регулярное выражение для лексического анализа"""
-        return '|'.join(f'(?P<{token.name}>{token.value.pattern})' for token in cls)
+        return re.compile('|'.join(f'(?P<{token.name}>{token.value.pattern})' for token in cls))
 
     def __str__(self) -> str:
         return f"{self.__class__.__name__}<{self.name}>"

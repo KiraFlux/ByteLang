@@ -1,52 +1,63 @@
-import re
 from dataclasses import dataclass
-from typing import Iterable
+from re import Match
+from re import Pattern
+from typing import Optional
 from typing import TextIO
 
+from bytelang.core.result import ErrOne
+from bytelang.core.result import Ok
+from bytelang.core.result import Result
+from bytelang.core.result import ResultAccumulator
+from bytelang.core.stream import CollectionOutputStream
+from bytelang.core.stream import OutputStream
 from bytelang.core.tokens import Token
 from bytelang.core.tokens import TokenType
-from bytelang.core.LEGACY_result import LEGACY_Result
-from bytelang.core.LEGACY_result import LEGACYResultAccumulator
-from bytelang.core.LEGACY_result import SingleLEGACYResult
+
+
+class _LexerContext:
+    """Контекст лексического анализатора"""
+
+    def __init__(self, source: TextIO) -> None:
+        self._source: str = source.read()
+        self._position = 0
+
+    def resolveToken(self, match: Optional[Match[str]]) -> Result[Optional[Token], OutputStream[str]]:
+        """Определить токен"""
+        if match is None:
+            self._position += 1
+            return ErrOne(f"Неизвестный символ: '{self._source[self._position]}' на позиции {self._position}")
+
+        self._position += match.end()
+        return Ok(TokenType[match.lastgroup].transform(match.group()))
+
+    def isAvailable(self) -> bool:
+        """Исходный код ещё не пуст"""
+        return self._position < len(self._source)
+
+    def getNextSubStr(self) -> str:
+        """Получить срез строки исходного кода далее"""
+        return self._source[self._position:]
 
 
 @dataclass(frozen=True)
 class Lexer:
     """Лексический анализатор - разбивает исходный код на токены"""
 
-    _token_regex: str
+    _token_pattern: Pattern[str]
 
-    def run(self, source: TextIO) -> LEGACY_Result[Iterable[Token], Iterable[str]]:
+    def run(self, source: TextIO) -> Result[OutputStream[Token], OutputStream[str]]:
         """
         Преобразовать исходный код в токены
         :param source: исходный код.
         :return Последовательность токенов
         """
-        resulter = LEGACYResultAccumulator()
+        context = _LexerContext(source)
+        ret = ResultAccumulator()
 
-        for result in self._process(source.read()):
-            resulter.putSingle(result)
+        while context.isAvailable():
+            ret.put(context.resolveToken(self._token_pattern.match(context.getNextSubStr())))
 
-        return resulter
-
-    def _process(self, source_read: str) -> Iterable[LEGACY_Result[Token, str]]:
-        position: int = 0
-
-        while position < len(source_read):
-            match = re.match(self._token_regex, source_read[position:])
-
-            if match is None:
-                yield SingleLEGACYResult.error(f"Неизвестный символ: '{source_read[position]}' на позиции {position}")
-                position += 1
-                continue
-
-            t: Token = TokenType[match.lastgroup].transform(match.group())
-            position += match.end()
-
-            if t is None:
-                continue
-
-            yield SingleLEGACYResult.ok(t)
+        return ret.map(lambda tokens: CollectionOutputStream(tuple(filter(lambda i: i is not None, tokens))))
 
 
 def _test():
@@ -56,14 +67,13 @@ def _test():
 
     print("begin")
 
-    lexer = Lexer(TokenType.build_regex())
-    result = lexer.run(StringIO(code_ok))
+    result = Lexer(TokenType.build_regex()).run(StringIO(code_ok))
 
-    if result.isError():
-        print('\n'.join(result.getError()))
+    if result.isErr():
+        print('\n'.join(result.err().getItems()))
         return
 
-    for token in result.unwrap():
+    for token in result.unwrap().getItems():
         print(token)
 
     print("end")

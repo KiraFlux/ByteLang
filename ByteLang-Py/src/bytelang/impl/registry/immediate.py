@@ -6,19 +6,25 @@ from typing import Iterable
 
 from bytelang.abc.registry import MutableRegistry
 from bytelang.abc.registry import Registry
-from bytelang.core.LEGACY_result import LEGACY_Result
-from bytelang.core.LEGACY_result import SingleLEGACYResult
+from bytelang.core.result import ErrOne
+from bytelang.core.result import LogResult
+from bytelang.core.result import Ok
 
 
-class ImmediateRegistry[Key, Item](Registry[Key, Item, str]):
+class ImmediateRegistry[Key, Item](Registry[Key, Item]):
     """Мгновенный реестр - загрузка происходит сразу"""
 
     def __init__(self, items: Iterable[tuple[Key, Item]]) -> None:
         super().__init__()
         self._items.update(items)
 
-    def get(self, key: Key) -> LEGACY_Result[Item, str]:
-        return SingleLEGACYResult.fromOptional(self._items.get(key), lambda: f"{key} not existing in {self}")
+    def get(self, key: Key) -> LogResult[Item]:
+        ret = self._items.get(key)
+
+        if ret is None:
+            return ErrOne(f"{key} not existing in {self}")
+
+        return Ok(ret)
 
 
 class FileRegistry[Item, RawItem](ImmediateRegistry[str, Item], ABC):
@@ -32,5 +38,5 @@ class FileRegistry[Item, RawItem](ImmediateRegistry[str, Item], ABC):
         """Преобразовать содержимое файла в последовательность пар ключ - предмет"""
 
 
-class MutableImmediateRegistry[Key, Item](MutableRegistry[Key, Item, str], ImmediateRegistry[Key, Item], ABC):
+class MutableImmediateRegistry[Key, Item](MutableRegistry[Key, Item], ImmediateRegistry[Key, Item], ABC):
     """Реестр мгновенной загрузки, изменяемый"""
