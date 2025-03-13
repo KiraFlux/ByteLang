@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from io import StringIO
 from pathlib import Path
 from typing import Callable
 from typing import ClassVar
-from typing import Final
 from typing import TextIO
 from typing import final
 
@@ -43,9 +43,9 @@ class SketchCompiler:
     type EnvLoader = Loader[PackageBundle, PackageSemanticContext]
     type SketchLoader = Loader[SketchBundle, SketchSemanticContext]
 
-    env_dir: ClassVar = Final[str]("envs")
+    env_dir: ClassVar = "envs"
     """Подкаталог окружений"""
-    packages_dir: ClassVar = Final[str]("packages")
+    packages_dir: ClassVar = "packages"
     """Подкаталог пакетов"""
 
     _root_path: Path
@@ -93,3 +93,28 @@ class SketchCompiler:
 
     def _makeSketchLoader(self, common: CommonSemanticContext, environments: EnvRegistry) -> SketchLoader:
         return self._makeLoader(common, lambda tokens: SketchParser(tokens), lambda context: SketchSemanticContext(context, environments))
+
+
+def _test():
+    c = SketchCompiler.new(Path(r"A:\Projects\ByteLang\ByteLang-Py\res"))
+
+    code = """
+    
+    .env test_env
+    
+    
+    
+    """
+
+    sketch = c.run(StringIO(code))
+
+    if sketch.isErr():
+        print("\n".join(sketch.err().getItems()))
+    else:
+        print(sketch.unwrap())
+
+    return
+
+
+if __name__ == '__main__':
+    _test()

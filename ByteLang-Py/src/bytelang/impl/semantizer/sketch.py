@@ -4,13 +4,14 @@ from typing import final
 from bytelang.abc.profiles import RValueProfile
 from bytelang.abc.registry import Registry
 from bytelang.core.bundle.env import EnvironmentBundle
+from bytelang.core.bundle.sketch import SketchBundle
 from bytelang.impl.registry.immediate import MutableImmediateRegistry
 from bytelang.impl.semantizer.common import CommonSemanticContext
 from bytelang.impl.semantizer.composite import CompositeSemanticContext
 
 
 @final
-class SketchSemanticContext(CompositeSemanticContext[NotImplemented]):
+class SketchSemanticContext(CompositeSemanticContext[SketchBundle]):
     """Контекст семантического анализа скетча"""
 
     def __init__(self, common: CommonSemanticContext, environments: Registry[str, EnvironmentBundle]) -> None:
@@ -24,8 +25,10 @@ class SketchSemanticContext(CompositeSemanticContext[NotImplemented]):
         self.instructions_code = bytearray()  # todo Byte Stream
         """Код инструкций"""
 
-    def toBundle(self) -> None:
-        pass
+    def toBundle(self) -> SketchBundle:
+        return SketchBundle(
+
+        )
 
 
 def _test():
