@@ -8,6 +8,7 @@ from typing import Iterable
 from typing import Mapping
 
 from bytelang.core.result import LogResult
+from bytelang.core.result import Ok
 
 
 class Registry[Key, Item](ABC):
@@ -50,7 +51,7 @@ class LazyRegistry[Key, Item](Registry[Key, Item], ABC):
 
     def get(self, key: Key) -> LogResult[Item]:
         if (ret := self._items.get(key)) is not None:
-            return ret
+            return Ok(ret)
 
         ret = self._load(key)
 

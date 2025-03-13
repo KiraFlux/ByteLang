@@ -53,7 +53,7 @@ class _SetEnvSpecialPointer(EnvironmentDirective, HasExistingID, ABC):
         return Identifier.parse(parser).map(lambda _id: cls(_id))
 
     def accept(self, context: EnvironmentSemanticContext) -> LogResult[None]:
-        return context.primitive_serializers_registry.get(self.identifier.id).map(lambda s: self._getSetter(context)(s), lambda e: (e,))
+        return context.primitive_serializers_registry.get(self.identifier.id).map(lambda s: self._getSetter(context)(s))
 
 
 class SetEnvInstructionPointer(_SetEnvSpecialPointer):
@@ -120,7 +120,7 @@ class UsePackage(EnvironmentDirective, HasExistingID):
         # что пакет существует
         package_result = context.package_registry.get(self.identifier.id)
 
-        if package_result.isError():
+        if package_result.isErr():
             return package_result.map()
 
         # что выбранные инструкции существуют

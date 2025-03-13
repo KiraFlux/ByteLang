@@ -43,7 +43,8 @@ class SelectEnvironment(SourceDirective, HasExistingID):
         if context.selected_environment is not None:
             ret.put(ErrOne(f"Env already selected: {context.selected_environment}"))
 
-        env = ret.put(context.environment_registry.get(self.identifier.id))
+        get = context.environment_registry.get(self.identifier.id)
+        env = ret.put(get)
 
         if ret.isOk():
             context.selected_environment = env.unwrap()

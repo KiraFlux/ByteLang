@@ -1,26 +1,47 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from typing import final
 
 from bytelang.abc.profiles import MacroProfile
 from bytelang.abc.profiles import RValueProfile
 from bytelang.abc.profiles import TypeProfile
 from bytelang.abc.registry import MutableRegistry
-from bytelang.abc.semantic import SemanticContext
+from bytelang.impl.registry.immediate import MutableImmediateRegistry
+from bytelang.impl.registry.primitive import PrimitiveRegistry
+from bytelang.impl.semantizer.super import SuperSemanticContext
 
 
-@dataclass
-class CommonSemanticContext(SemanticContext[None]):
+@final
+class CommonSemanticContext(SuperSemanticContext[NotImplemented]):
     """Контекст общего назначения"""
 
-    macro_registry: MutableRegistry[str, MacroProfile, str]
-    """Реестр макросов"""
+    def __init__(self, primitives: PrimitiveRegistry) -> None:
+        self._type_registry = self._makeTypeRegistry(primitives)
+        """Реестр типов"""
 
-    type_registry: MutableRegistry[str, TypeProfile, str]
-    """Реестр типов"""
+        self._macro_registry = MutableImmediateRegistry[str, MacroProfile](())
+        """Реестр макросов"""
 
-    const_registry: MutableRegistry[str, RValueProfile, str]
-    """Реестр констант"""
+        self._const_registry = MutableImmediateRegistry[str, RValueProfile](())
+        """Реестр констант"""
 
-    def toBundle(self) -> None:
-        return None
+    @staticmethod
+    def _makeTypeRegistry(primitives: PrimitiveRegistry) -> MutableRegistry[str, TypeProfile]:
+        from bytelang.impl.profiles.type import PrimitiveTypeProfile
+
+        return MutableImmediateRegistry[str, TypeProfile]((
+            (key, PrimitiveTypeProfile(item))
+            for key, item in primitives.getMappingView().items()
+        ))
+
+    def getConstants(self) -> MutableRegistry[str, RValueProfile]:
+        return self._const_registry
+
+    def getMacros(self) -> MutableRegistry[str, MacroProfile]:
+        return self._macro_registry
+
+    def getTypes(self) -> MutableRegistry[str, TypeProfile]:
+        return self._type_registry
+
+    def toBundle(self) -> NotImplemented:
+        raise NotImplementedError

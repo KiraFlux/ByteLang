@@ -4,7 +4,7 @@
 .ptr_prog u16
 .ptr_data i8
 
-.use my_package{foo}
+.use my_package{foo, bar}
 
 # директивы общего назначения
 

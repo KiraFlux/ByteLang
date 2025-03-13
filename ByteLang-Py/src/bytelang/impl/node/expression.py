@@ -19,10 +19,10 @@ from bytelang.core.result import Ok
 from bytelang.core.result import ResultAccumulator
 from bytelang.core.tokens import TokenType
 from bytelang.impl.node.super import SuperNode
-from bytelang.impl.semantizer.common import CommonSemanticContext
+from bytelang.impl.semantizer.super import SuperSemanticContext
 
 
-class Expression(SuperNode[CommonSemanticContext, RValueProfile, "Expression"], ABC):
+class Expression(SuperNode[SuperSemanticContext, RValueProfile, "Expression"], ABC):
     """Выражение"""
 
     @classmethod
@@ -41,7 +41,7 @@ class Expression(SuperNode[CommonSemanticContext, RValueProfile, "Expression"], 
                 return ErrOne(f"Token not an expression: {not_expression_token}")
 
     @abstractmethod
-    def accept(self, context: CommonSemanticContext) -> LogResult[RValueProfile]:
+    def accept(self, context: SuperSemanticContext) -> LogResult[RValueProfile]:
         pass
 
     @abstractmethod
@@ -59,8 +59,8 @@ class Identifier(Expression):
     def expand(self, table: Mapping[Identifier, Expression]) -> Expression:
         return table.get(self, self)
 
-    def accept(self, context: CommonSemanticContext) -> LogResult[RValueProfile]:
-        return context.const_registry.get(self.id)
+    def accept(self, context: SuperSemanticContext) -> LogResult[RValueProfile]:
+        return context.getConstants().get(self.id)
 
     @classmethod
     def parse(cls, parser: Parser) -> LogResult[Identifier]:
@@ -89,7 +89,7 @@ class Literal[T](Expression):
 
         return ret.map(lambda _: cls(rv_maker(token.value)))
 
-    def accept(self, context: CommonSemanticContext) -> LogResult[RValueProfile[T]]:
+    def accept(self, context: SuperSemanticContext) -> LogResult[RValueProfile[T]]:
         return Ok(self.value)
 
 
@@ -114,7 +114,7 @@ class UnaryOp(Expression):
 
         return Expression.parse(parser).map(lambda expr: cls(operator, expr))
 
-    def accept[T](self, context: CommonSemanticContext) -> LogResult[RValueProfile[T]]:
+    def accept[T](self, context: SuperSemanticContext) -> LogResult[RValueProfile[T]]:
         return self.operand.accept(context).andThen(lambda rv: rv.applyUnaryOperator(self.op))
 
 
@@ -132,7 +132,7 @@ class BinaryOp(Expression):
     def expand(self, table: Mapping[Identifier, Expression]) -> Expression:
         return BinaryOp(self.op, self.left.expand(table), self.right.expand(table))
 
-    def accept(self, context: CommonSemanticContext) -> LogResult[RValueProfile]:
+    def accept(self, context: SuperSemanticContext) -> LogResult[RValueProfile]:
         ret = ResultAccumulator()
 
         a = ret.put(self.left.accept(context))
@@ -177,9 +177,9 @@ class MacroCall(Expression):
     def expand(self, table: Mapping[Identifier, Expression]) -> Expression:
         return MacroCall(self.macro_id, tuple(arg.expand(table) for arg in self.arguments))
 
-    def accept(self, context: CommonSemanticContext) -> LogResult[RValueProfile]:
+    def accept(self, context: SuperSemanticContext) -> LogResult[RValueProfile]:
         return (
-            context.macro_registry.get(self.macro_id)
+            context.getMacros().get(self.macro_id)
             .andThen(lambda macro: macro.expand(tuple(self.arguments)))
             .andThen(lambda expand: expand.accept(context))
         )

@@ -1,51 +1,47 @@
-from dataclasses import dataclass
 from typing import Optional
+from typing import final
 
 from bytelang.abc.profiles import RValueProfile
-from bytelang.abc.registry import MutableRegistry
 from bytelang.abc.registry import Registry
-from bytelang.abc.semantic import SemanticContext
 from bytelang.core.bundle.env import EnvironmentBundle
+from bytelang.impl.registry.immediate import MutableImmediateRegistry
 from bytelang.impl.semantizer.common import CommonSemanticContext
+from bytelang.impl.semantizer.composite import CompositeSemanticContext
 
 
-@dataclass
-class SketchSemanticContext(CommonSemanticContext, SemanticContext[NotImplemented]):
+@final
+class SketchSemanticContext(CompositeSemanticContext[NotImplemented]):
     """Контекст семантического анализа скетча"""
 
-    environment_registry: Registry[str, EnvironmentBundle]
-    """Реестр окружений"""
-
-    selected_environment: Optional[EnvironmentBundle]
-    """Выбранное окружение"""
-
-    mark_registry: MutableRegistry[str, RValueProfile]
-    """Реестр меток"""
-
-    instructions_code: bytearray  # todo Byte Stream
-    """Код инструкций"""
+    def __init__(self, common: CommonSemanticContext, environments: Registry[str, EnvironmentBundle]) -> None:
+        super().__init__(common)
+        self.environment_registry = environments
+        """Реестр окружений"""
+        self.selected_environment: Optional[EnvironmentBundle] = None
+        """Выбранное окружение"""
+        self.mark_registry = MutableImmediateRegistry[str, RValueProfile](())
+        """Реестр меток"""
+        self.instructions_code = bytearray()  # todo Byte Stream
+        """Код инструкций"""
 
     def toBundle(self) -> None:
         pass
 
 
 def _test():
-    from bytelang.impl.registry.immediate import MutableImmediateRegistry
-    from bytelang.impl.profiles.type import PrimitiveTypeProfile
     from bytelang.impl.parser.package import PackageParser
     from bytelang.impl.parser.env import EnvironmentParser
+    from bytelang.impl.parser.sketch import SketchParser
     from bytelang.impl.semantizer.package import PackageSemanticContext
     from bytelang.impl.registry.primitive import PrimitiveRegistry
     from bytelang.core.lexer import Lexer
     from bytelang.core.tokens import TokenType
     from bytelang.core.loader import Loader
-    from bytelang.impl.parser.sketch import SketchParser
     from bytelang.impl.registry.loader import CodeLoadingRegistry
-    from bytelang.core.bundle.package import PackageBundle
-    from bytelang.impl.semantizer.env import EnvironmentSemanticContext
-
     from rustpy.exceptions import Panic
     from pathlib import Path
+    from bytelang.impl.semantizer.env import EnvironmentSemanticContext
+    from bytelang.core.bundle.package import PackageBundle
 
     root_path = Path(r"A:\Projects\ByteLang\ByteLang-Py\res")
 
@@ -53,14 +49,7 @@ def _test():
 
     _primitive_registry = PrimitiveRegistry()
 
-    _common_context = CommonSemanticContext(
-        macro_registry=MutableImmediateRegistry(()),
-        type_registry=MutableImmediateRegistry((
-            (_id, PrimitiveTypeProfile(_primitive))
-            for (_id, _primitive) in _primitive_registry.getItems()
-        )),
-        const_registry=MutableImmediateRegistry(()),
-    )
+    _common_context = CommonSemanticContext(_primitive_registry)
 
     package_loader = CodeLoadingRegistry[PackageBundle, PackageSemanticContext](
         root_path / "packages",
@@ -68,12 +57,7 @@ def _test():
             _lexer,
             _common_context,
             lambda tokens: PackageParser(tokens),
-            lambda context: PackageSemanticContext(
-                macro_registry=context.macro_registry,
-                type_registry=context.type_registry,
-                const_registry=context.const_registry,
-                instruction_registry=MutableImmediateRegistry(())
-            )
+            lambda context: PackageSemanticContext(context)
         )
     )
 
@@ -83,14 +67,7 @@ def _test():
             _lexer,
             _common_context,
             lambda tokens: EnvironmentParser(tokens),
-            lambda context: EnvironmentSemanticContext(
-                macro_registry=context.macro_registry,
-                type_registry=context.type_registry,
-                const_registry=context.const_registry,
-                package_registry=package_loader,
-                instruction_registry=MutableImmediateRegistry(()),
-                primitive_serializers_registry=_primitive_registry
-            )
+            lambda context: EnvironmentSemanticContext(context, _primitive_registry, package_loader)
         )
     )
 
@@ -98,15 +75,7 @@ def _test():
         _lexer,
         _common_context,
         lambda tokens: SketchParser(tokens),
-        lambda context: SketchSemanticContext(
-            macro_registry=context.macro_registry,
-            type_registry=context.type_registry,
-            const_registry=context.const_registry,
-            environment_registry=env_loader,
-            mark_registry=MutableImmediateRegistry(()),
-            selected_environment=None,
-            instructions_code=bytearray(),
-        )
+        lambda context: SketchSemanticContext(context, env_loader)
     )
 
     def _pr(title: str, reg: Registry):
@@ -114,14 +83,16 @@ def _test():
         print("\n".join(map(str, reg.getItems())))
 
     try:
+        _my_env = env_loader.get("test_env").unwrap()
+
         with open(root_path / "sketches" / "sketch.bls") as source:
             sketch = sketch_loader.load(source).unwrap()
 
-        _pr("Constants", _common_context.const_registry)
-        _pr("Macro", _common_context.macro_registry)
-        _pr("Types", _common_context.type_registry)
+        _pr("Constants", _common_context.getConstants())
+        _pr("Macro", _common_context.getMacros())
+        _pr("Types", _common_context.getTypes())
         _pr("Packages", package_loader)
-        # _pr("Environments", sketch)
+        _pr("Instructions", _my_env.instructions)
 
     except Panic as e:
         print(e)

@@ -2,41 +2,42 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from typing import Final
 from typing import Optional
+from typing import final
 
 from bytelang.abc.profiles import EnvironmentInstructionProfile
-from bytelang.abc.registry import MutableRegistry
 from bytelang.abc.registry import Registry
-from bytelang.abc.semantic import SemanticContext
 from bytelang.abc.serializer import Serializer
 from bytelang.core.bundle.env import EnvironmentBundle
 from bytelang.core.bundle.package import PackageBundle
 from bytelang.core.bundle.pointer import PointersBundle
+from bytelang.impl.registry.immediate import MutableImmediateRegistry
 from bytelang.impl.semantizer.common import CommonSemanticContext
+from bytelang.impl.semantizer.composite import CompositeSemanticContext
 
 
-@dataclass
-class EnvironmentSemanticContext(CommonSemanticContext, SemanticContext[EnvironmentBundle]):
+@final
+class EnvironmentSemanticContext(CompositeSemanticContext[EnvironmentBundle]):
     """Контекст семантического анализа файла окружения"""
 
-    package_registry: Registry[str, PackageBundle, str]
-    """Реестр пакетов"""
+    def __init__(self, common: CommonSemanticContext, primitives: Registry[str, Serializer], packages: Registry[str, PackageBundle]) -> None:
+        super().__init__(common)
 
-    instruction_registry: MutableRegistry[str, EnvironmentInstructionProfile, str]
-    """Реестр инструкций окружения"""
+        self.primitive_serializers_registry: Final = primitives
+        """Реестр сериализаторов примитивных типов"""
+        self.package_registry: Final = packages
+        """Реестр пакетов"""
 
-    primitive_serializers_registry: Registry[str, Serializer, str]
-    """Реестр сериализаторов примитивных типов"""
+        self.instruction_registry: Final = MutableImmediateRegistry[str, EnvironmentInstructionProfile](())
+        """Реестр инструкций окружения"""
 
-    instruction_pointer: Optional[Serializer[int]] = None
-    """Сериализатор указателя на инструкцию"""
-
-    program_pointer: Optional[Serializer[int]] = None
-    """Сериализатор указателя на область программы"""
-
-    data_pointer: Optional[Serializer[int]] = None
-    """Сериализатор указателя в секции данных"""
+        self.instruction_pointer: Optional[Serializer[int]] = None
+        """Сериализатор указателя на инструкцию"""
+        self.program_pointer: Optional[Serializer[int]] = None
+        """Сериализатор указателя на область программы"""
+        self.data_pointer: Optional[Serializer[int]] = None
+        """Сериализатор указателя в секции данных"""
 
     def toBundle(self) -> EnvironmentBundle:
         return EnvironmentBundle(
@@ -50,8 +51,6 @@ class EnvironmentSemanticContext(CommonSemanticContext, SemanticContext[Environm
 
 
 def _test():
-    from bytelang.impl.registry.immediate import MutableImmediateRegistry
-    from bytelang.impl.profiles.type import PrimitiveTypeProfile
     from bytelang.impl.parser.package import PackageParser
     from bytelang.impl.parser.env import EnvironmentParser
     from bytelang.impl.semantizer.package import PackageSemanticContext
@@ -70,14 +69,7 @@ def _test():
 
     _primitive_registry = PrimitiveRegistry()
 
-    _common_context = CommonSemanticContext(
-        macro_registry=MutableImmediateRegistry(()),
-        type_registry=MutableImmediateRegistry((
-            (_id, PrimitiveTypeProfile(_primitive))
-            for (_id, _primitive) in _primitive_registry.getItems()
-        )),
-        const_registry=MutableImmediateRegistry(()),
-    )
+    _common_context = CommonSemanticContext(_primitive_registry)
 
     package_loader = CodeLoadingRegistry[PackageBundle, PackageSemanticContext](
         root_path / "packages",
@@ -85,12 +77,7 @@ def _test():
             _lexer,
             _common_context,
             lambda tokens: PackageParser(tokens),
-            lambda context: PackageSemanticContext(
-                macro_registry=context.macro_registry,
-                type_registry=context.type_registry,
-                const_registry=context.const_registry,
-                instruction_registry=MutableImmediateRegistry(())
-            )
+            lambda context: PackageSemanticContext(context)
         )
     )
 
@@ -100,14 +87,7 @@ def _test():
             _lexer,
             _common_context,
             lambda tokens: EnvironmentParser(tokens),
-            lambda context: EnvironmentSemanticContext(
-                macro_registry=context.macro_registry,
-                type_registry=context.type_registry,
-                const_registry=context.const_registry,
-                package_registry=package_loader,
-                instruction_registry=MutableImmediateRegistry(()),
-                primitive_serializers_registry=_primitive_registry
-            )
+            lambda context: EnvironmentSemanticContext(context, _primitive_registry, package_loader)
         )
     )
 
@@ -118,9 +98,9 @@ def _test():
     try:
         _my_env = env_loader.get("test_env").unwrap()
 
-        _pr("Constants", _common_context.const_registry)
-        _pr("Macro", _common_context.macro_registry)
-        _pr("Types", _common_context.type_registry)
+        _pr("Constants", _common_context.getConstants())
+        _pr("Macro", _common_context.getMacros())
+        _pr("Types", _common_context.getTypes())
         _pr("Packages", package_loader)
         _pr("Instructions", _my_env.instructions)
 

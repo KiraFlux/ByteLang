@@ -20,14 +20,14 @@ from bytelang.impl.node.type import Field
 from bytelang.impl.node.type import TypeNode
 from bytelang.impl.profiles.macro import MacroProfileImpl
 from bytelang.impl.profiles.type import StructTypeProfile
-from bytelang.impl.semantizer.common import CommonSemanticContext
+from bytelang.impl.semantizer.common import SuperSemanticContext
 
 
-class CommonDirective(Directive[CommonSemanticContext], ABC):
+class CommonDirective(Directive[SuperSemanticContext], ABC):
     """Директива общего назначения"""
 
     @abstractmethod
-    def accept(self, context: CommonSemanticContext) -> LogResult[None]:
+    def accept(self, context: SuperSemanticContext) -> LogResult[None]:
         pass
 
 
@@ -42,17 +42,17 @@ class ConstDefine(CommonDirective, HasUniqueID):
     def getIdentifier(cls) -> str:
         return "const"
 
-    def accept(self, context: CommonSemanticContext) -> LogResult[None]:
+    def accept(self, context: SuperSemanticContext) -> LogResult[None]:
         ret = ResultAccumulator()
 
-        maybe_already_declared = self.checkIdentifier(context.const_registry)
+        maybe_already_declared = self.checkIdentifier(context.getConstants())
 
         if maybe_already_declared is not None:
             ret.put(ErrOne(maybe_already_declared))
 
         expr_value = ret.put(self.expression.accept(context))
 
-        return ret.map(lambda _: context.const_registry.register(self.identifier.id, expr_value.unwrap()))
+        return ret.map(lambda _: context.getConstants().register(self.identifier.id, expr_value.unwrap()))
 
     @classmethod
     def parse(cls, parser: Parser) -> LogResult[Directive]:
@@ -85,17 +85,17 @@ class TypeAliasDefine(CommonDirective, HasUniqueID):
 
         return ret.map(lambda _: cls(_id.unwrap(), _type.unwrap()))
 
-    def accept(self, context: CommonSemanticContext) -> LogResult[None]:
+    def accept(self, context: SuperSemanticContext) -> LogResult[None]:
         ret = ResultAccumulator()
 
-        s = self.checkIdentifier(context.type_registry)
+        s = self.checkIdentifier(context.getTypes())
 
         if s is not None:
             ret.put(ErrOne(s))
 
         profile = ret.put(self.type.accept(context))
 
-        return ret.map(lambda _: context.type_registry.register(self.identifier.id, profile.unwrap()))
+        return ret.map(lambda _: context.getTypes().register(self.identifier.id, profile.unwrap()))
 
 
 @dataclass(frozen=True)
@@ -115,10 +115,10 @@ class StructDefine(CommonDirective, HasUniqueID, HasUniqueArguments[Field]):
 
         return ret.map(lambda _: cls(fields.unwrap(), _id.unwrap()))
 
-    def accept(self, context: CommonSemanticContext) -> LogResult[None]:
+    def accept(self, context: SuperSemanticContext) -> LogResult[None]:
         ret2 = ResultAccumulator()
 
-        s = self.checkIdentifier(context.type_registry)
+        s = self.checkIdentifier(context.getTypes())
 
         if s is not None:
             ret2.put(ErrOne(s))
@@ -131,7 +131,7 @@ class StructDefine(CommonDirective, HasUniqueID, HasUniqueArguments[Field]):
         for field in self.arguments:
             ret.put(field.accept(context))
 
-        return ret.map(lambda _: context.type_registry.register(self.identifier.id, StructTypeProfile(dict(ret.unwrap()))))
+        return ret.map(lambda _: context.getTypes().register(self.identifier.id, StructTypeProfile(dict(ret.unwrap()))))
 
 
 @dataclass(frozen=True)
@@ -156,7 +156,7 @@ class MacroDefine(CommonDirective, HasUniqueID, HasUniqueArguments[Identifier]):
 
         return ret.map(lambda _: cls(args.unwrap(), _id.unwrap(), expr.unwrap()))
 
-    def accept(self, context: CommonSemanticContext) -> LogResult[None]:
+    def accept(self, context: SuperSemanticContext) -> LogResult[None]:
         ret = ResultAccumulator()
         ret.put(self.checkArguments())
-        return ret.map(lambda _: context.macro_registry.register(self.identifier.id, MacroProfileImpl(tuple(self.arguments), self.template)))
+        return ret.map(lambda _: context.getMacros().register(self.identifier.id, MacroProfileImpl(tuple(self.arguments), self.template)))

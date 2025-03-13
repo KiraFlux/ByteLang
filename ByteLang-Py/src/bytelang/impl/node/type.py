@@ -15,10 +15,10 @@ from bytelang.impl.node.expression import Identifier
 from bytelang.impl.node.super import SuperNode
 from bytelang.impl.profiles.type import ArrayTypeProfile
 from bytelang.impl.profiles.type import PointerTypeProfile
-from bytelang.impl.semantizer.common import CommonSemanticContext
+from bytelang.impl.semantizer.common import SuperSemanticContext
 
 
-class TypeNode(SuperNode[CommonSemanticContext, TypeProfile, 'Type'], ABC):
+class TypeNode(SuperNode[SuperSemanticContext, TypeProfile, 'Type'], ABC):
     """Узел типа"""
 
     @classmethod
@@ -33,7 +33,7 @@ class TypeNode(SuperNode[CommonSemanticContext, TypeProfile, 'Type'], ABC):
         return PureTypeNode.parse(parser)
 
     @abstractmethod
-    def accept(self, context: CommonSemanticContext) -> LogResult[TypeProfile]:
+    def accept(self, context: SuperSemanticContext) -> LogResult[TypeProfile]:
         pass
 
 
@@ -41,8 +41,8 @@ class TypeNode(SuperNode[CommonSemanticContext, TypeProfile, 'Type'], ABC):
 class PureTypeNode(TypeNode, HasExistingID):
     """Чистый тип"""
 
-    def accept(self, context: CommonSemanticContext) -> LogResult[TypeProfile]:
-        return context.type_registry.get(self.identifier.id)
+    def accept(self, context: SuperSemanticContext) -> LogResult[TypeProfile]:
+        return context.getTypes().get(self.identifier.id)
 
     @classmethod
     def parse(cls, parser: Parser) -> LogResult[TypeNode]:
@@ -62,7 +62,7 @@ class PointerTypeNode(TypeNode):
         parser.tokens.next()
         return TypeNode.parse(parser).map(lambda t: cls(t))
 
-    def accept(self, context: CommonSemanticContext) -> LogResult[TypeProfile]:
+    def accept(self, context: SuperSemanticContext) -> LogResult[TypeProfile]:
         ret = ResultAccumulator()
         _type_profile = self.pointer.accept(context)
         return ret.map(lambda _: PointerTypeProfile(_type_profile.unwrap()))
@@ -89,7 +89,7 @@ class ArrayTypeNode(TypeNode):
 
         return ret.map(lambda _: cls(_type.unwrap(), expr.unwrap()))
 
-    def accept(self, context: CommonSemanticContext) -> LogResult[TypeProfile]:
+    def accept(self, context: SuperSemanticContext) -> LogResult[TypeProfile]:
         ret = ResultAccumulator()
 
         item_type_profile = ret.put(self.type.accept(context))
@@ -99,13 +99,13 @@ class ArrayTypeNode(TypeNode):
 
 
 @dataclass(frozen=True)
-class Field(SuperNode[CommonSemanticContext, tuple[str, TypeProfile], "Field"], HasExistingID):
+class Field(SuperNode[SuperSemanticContext, tuple[str, TypeProfile], "Field"], HasExistingID):
     """Узел объявления поля"""
 
     type: TypeNode
     """Тип поля"""
 
-    def accept(self, context: CommonSemanticContext) -> LogResult[tuple[str, TypeProfile]]:
+    def accept(self, context: SuperSemanticContext) -> LogResult[tuple[str, TypeProfile]]:
         ret = ResultAccumulator()
         type_profile = ret.put(self.type.accept(context))
         return ret.map(lambda _: (self.identifier.id, type_profile.unwrap()))

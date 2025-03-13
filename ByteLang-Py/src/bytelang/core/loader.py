@@ -1,12 +1,10 @@
 from dataclasses import dataclass
 from typing import Callable
-from typing import Sequence
 from typing import TextIO
 
 from bytelang.abc.semantic import SemanticContext
 from bytelang.core.lexer import Lexer
 from bytelang.core.result import LogResult
-from bytelang.core.stream import CollectionOutputStream
 from bytelang.core.stream import OutputStream
 from bytelang.core.tokens import Token
 from bytelang.impl.node.program import Program
@@ -27,11 +25,11 @@ class Loader[T, S: SemanticContext]:
         """Преобразовать исходный код в Bundle"""
         return self._runLexer(source).andThen(self._runParser).andThen(self._runSemantizer)
 
-    def _runLexer(self, source: TextIO) -> LogResult[Sequence[Token]]:
-        return self._lexer.run(source).map(lambda tokens: tuple(tokens))
+    def _runLexer(self, source: TextIO) -> LogResult[OutputStream[Token]]:
+        return self._lexer.run(source)
 
-    def _runParser(self, tokens: Sequence[Token]) -> LogResult[Program]:
-        return Program.parse(self._parser_maker(CollectionOutputStream(tokens)))
+    def _runParser(self, tokens: OutputStream[Token]) -> LogResult[Program]:
+        return Program.parse(self._parser_maker(tokens))
 
     def _runSemantizer(self, program: Program) -> LogResult[T]:
         context = self._special_context_maker(self._common_context)
