@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
@@ -15,6 +17,7 @@ from bytelang.core.loader import Loader
 from bytelang.core.result import LogResult
 from bytelang.core.stream import OutputStream
 from bytelang.core.tokens import Token
+from bytelang.core.tokens import TokenType
 from bytelang.impl.parser.common import CommonParser
 from bytelang.impl.parser.env import EnvironmentParser
 from bytelang.impl.parser.package import PackageParser
@@ -33,6 +36,13 @@ from bytelang.impl.semantizer.super import SuperSemanticContext
 class SketchCompiler:
     """Компилятор исходного кода скетча в набор"""
 
+    type PackageRegistry = Registry[str, PackageBundle]
+    type EnvRegistry = Registry[str, EnvironmentBundle]
+
+    type PackageLoader = Loader[EnvironmentBundle, EnvironmentSemanticContext]
+    type EnvLoader = Loader[PackageBundle, PackageSemanticContext]
+    type SketchLoader = Loader[SketchBundle, SketchSemanticContext]
+
     env_dir: ClassVar = Final[str]("envs")
     """Подкаталог окружений"""
     packages_dir: ClassVar = Final[str]("packages")
@@ -45,12 +55,10 @@ class SketchCompiler:
     _primitives: PrimitiveRegistry
     """Реестр примитивных типов"""
 
-    type PackageRegistry = Registry[str, PackageBundle]
-    type EnvRegistry = Registry[str, EnvironmentBundle]
-
-    type PackageLoader = Loader[EnvironmentBundle, EnvironmentSemanticContext]
-    type EnvLoader = Loader[PackageBundle, PackageSemanticContext]
-    type SketchLoader = Loader[SketchBundle, SketchSemanticContext]
+    @classmethod
+    def new(cls, path: Path) -> SketchCompiler:
+        """Создать по упрощенной схеме"""
+        return cls(path, Lexer(TokenType.build_regex()), PrimitiveRegistry())
 
     def run(self, source: TextIO) -> LogResult[SketchBundle]:
         """Обработать скетч в набор"""
