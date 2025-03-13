@@ -7,7 +7,7 @@ from bytelang.core.result import ErrOne
 from bytelang.core.result import LogResult
 
 
-class CodeLoadingRegistry[T, S: SemanticContext](CatalogRegistry[T]):
+class BundleLoaderRegistry[T, S: SemanticContext](CatalogRegistry[T]):
     """Реестр загрузки кода"""
 
     def __init__(self, catalog: Path, loader: Loader[T, S]) -> None:

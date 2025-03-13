@@ -58,20 +58,19 @@ def _test():
     from bytelang.core.lexer import Lexer
     from bytelang.core.tokens import TokenType
     from bytelang.core.loader import Loader
-    from bytelang.impl.registry.loader import CodeLoadingRegistry
+    from bytelang.impl.registry.loader import BundleLoaderRegistry
 
     from rustpy.exceptions import Panic
     from pathlib import Path
 
     root_path = Path(r"A:\Projects\ByteLang\ByteLang-Py\res")
-
     _lexer = Lexer(TokenType.build_regex())
-
     _primitive_registry = PrimitiveRegistry()
+
 
     _common_context = CommonSemanticContext(_primitive_registry)
 
-    package_loader = CodeLoadingRegistry[PackageBundle, PackageSemanticContext](
+    package_loader = BundleLoaderRegistry[PackageBundle, PackageSemanticContext](
         root_path / "packages",
         Loader(
             _lexer,
@@ -81,7 +80,7 @@ def _test():
         )
     )
 
-    env_loader = CodeLoadingRegistry[EnvironmentBundle, EnvironmentSemanticContext](
+    env_loader = BundleLoaderRegistry[EnvironmentBundle, EnvironmentSemanticContext](
         root_path / "envs",
         Loader(
             _lexer,
