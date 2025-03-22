@@ -24,7 +24,7 @@ class InstructionCall(Statement[SketchSemanticContext], HasExistingID, HasUnique
         ret = ResultAccumulator()
         pass  # TODO # TODO push to write stream (read / write streams)
 
-        # ret.putOptionalError(self.checkIdentifier())
+        
 
         return ret.map(lambda _: None)
 

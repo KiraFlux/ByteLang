@@ -8,9 +8,6 @@ from typing import ClassVar
 from typing import TextIO
 from typing import final
 
-from bytelang.abc.registry import Registry
-from bytelang.core.bundle.env import EnvironmentBundle
-from bytelang.core.bundle.package import PackageBundle
 from bytelang.core.bundle.sketch import SketchBundle
 from bytelang.core.lexer import Lexer
 from bytelang.core.loader import Loader
@@ -36,13 +33,6 @@ from bytelang.impl.semantizer.super import SuperSemanticContext
 class SketchCompiler:
     """Компилятор исходного кода скетча в набор"""
 
-    type PackageRegistry = Registry[str, PackageBundle]
-    type EnvRegistry = Registry[str, EnvironmentBundle]
-
-    type PackageLoader = Loader[EnvironmentBundle, EnvironmentSemanticContext]
-    type EnvLoader = Loader[PackageBundle, PackageSemanticContext]
-    type SketchLoader = Loader[SketchBundle, SketchSemanticContext]
-
     env_dir: ClassVar = "envs"
     """Подкаталог окружений"""
     packages_dir: ClassVar = "packages"
@@ -63,36 +53,41 @@ class SketchCompiler:
     def run(self, source: TextIO) -> LogResult[SketchBundle]:
         """Обработать скетч в набор"""
 
-        common_context = CommonSemanticContext(self._primitives)
+        common = CommonSemanticContext(self._primitives)
 
-        package_registry = self._makePackageRegistry(self._makePackageLoader(common_context))
-        env_registry = self._makeEnvRegistry(self._makeEnvLoader(common_context, package_registry))
-        sketch_loader = self._makeSketchLoader(common_context, env_registry)
+        package_registry = BundleLoaderRegistry(
+            self._root_path / self.packages_dir,
+            self._makeLoader(
+                common,
+                PackageParser.new,
+                lambda context: PackageSemanticContext(context)
+            )
+        )
+
+        env_registry = BundleLoaderRegistry(
+            self._root_path / self.env_dir,
+            self._makeLoader(
+                common,
+                EnvironmentParser.new,
+                lambda context: EnvironmentSemanticContext(context, self._primitives, package_registry)
+            )
+        )
+
+        sketch_loader = self._makeLoader(
+            common,
+            SketchParser.new,
+            lambda context: SketchSemanticContext(context, env_registry)
+        )
 
         return sketch_loader.load(source)
 
-    def _makeLoader[P: CommonParser, S: SuperSemanticContext](
+    def _makeLoader(
             self,
             common_context: CommonSemanticContext,
-            parser_maker: Callable[[OutputStream[Token]], P],
-            composite_context_maker: Callable[[CommonSemanticContext], S]
+            parser_maker: Callable[[OutputStream[Token]], CommonParser],
+            composite_context_maker: Callable[[CommonSemanticContext], SuperSemanticContext]
     ) -> Loader:
         return Loader(self._lexer, common_context, parser_maker, composite_context_maker)
-
-    def _makePackageLoader(self, common: CommonSemanticContext) -> PackageLoader:
-        return self._makeLoader(common, lambda tokens: PackageParser(tokens), lambda context: PackageSemanticContext(context))
-
-    def _makePackageRegistry(self, loader: PackageLoader) -> PackageRegistry:
-        return BundleLoaderRegistry(self._root_path / self.packages_dir, loader)
-
-    def _makeEnvLoader(self, common: CommonSemanticContext, packages: PackageRegistry) -> EnvLoader:
-        return self._makeLoader(common, lambda tokens: EnvironmentParser(tokens), lambda context: EnvironmentSemanticContext(context, self._primitives, packages))
-
-    def _makeEnvRegistry(self, loader: EnvLoader) -> EnvRegistry:
-        return BundleLoaderRegistry(self._root_path / self.env_dir, loader)
-
-    def _makeSketchLoader(self, common: CommonSemanticContext, environments: EnvRegistry) -> SketchLoader:
-        return self._makeLoader(common, lambda tokens: SketchParser(tokens), lambda context: SketchSemanticContext(context, environments))
 
 
 def _test():
@@ -100,9 +95,9 @@ def _test():
 
     code = """
     
-    .env test_env
+    .env arduino
     
-    
+    digitalRead 2, 0
     
     """
 

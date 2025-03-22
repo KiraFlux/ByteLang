@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from pathlib import Path
 from re import Match
 from re import Pattern
 from typing import Optional
@@ -12,6 +13,10 @@ from bytelang.core.stream import CollectionOutputStream
 from bytelang.core.stream import OutputStream
 from bytelang.core.tokens import Token
 from bytelang.core.tokens import TokenType
+
+from bytelang.core.util.log import Logger
+
+_log = Logger(Path(__file__).stem)
 
 
 class _LexerContext:
@@ -45,6 +50,7 @@ class Lexer:
 
     _token_pattern: Pattern[str]
 
+    @_log.attach()
     def run(self, source: TextIO) -> Result[OutputStream[Token], OutputStream[str]]:
         """
         Преобразовать исходный код в токены
@@ -65,18 +71,7 @@ def _test():
     code_ok = """.this_is_directive "String1" "String2" 'c' 12345 123.456 identifier () {} [] <> + - * / = , : # comment"""
     code_error = "а 123456 о 123456 у 123456         ш             рз2нт !;№ 123456 "
 
-    print("begin")
-
     result = Lexer(TokenType.build_regex()).run(StringIO(code_ok))
-
-    if result.isErr():
-        print('\n'.join(result.err().getItems()))
-        return
-
-    for token in result.unwrap().getItems():
-        print(token)
-
-    print("end")
 
 
 if __name__ == "__main__":

@@ -33,6 +33,11 @@ class Registry[Key, Item](ABC):
         """Получить вид на элементы"""
         return self._items
 
+    def __repr__(self) -> str:
+        return "\n".join((
+            f"{key}: {item}" for key, item in self.getItems()
+        ))
+
 
 class MutableRegistry[Key, Item](Registry[Key, Item], ABC):
     """Интерфейс позволяет добавлять элементы налету"""

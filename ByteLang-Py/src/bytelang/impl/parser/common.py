@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Final
 from typing import Iterable
 from typing import Optional
@@ -28,6 +30,11 @@ class CommonParser(Parser[Statement]):
             MacroDefine,
             TypeAliasDefine
         )
+
+    @classmethod
+    def new(cls, tokens: OutputStream[Token]) -> CommonParser:
+        """Создать новый экземпляр парсера"""
+        return cls(tokens)
 
     def __init__(self, stream: OutputStream[Token]) -> None:
         super().__init__(stream)

@@ -16,6 +16,12 @@ class Stream[T]:
     def getItems(self) -> Sequence[T]:
         """Получить последовательность элементов"""
 
+    def __repr__(self) -> str:
+        return "\n".join((
+            f"{i}: {el}"
+            for i, el in enumerate(self.getItems())
+        ))
+
 
 class InputStream[T](Stream[T], ABC):
     """Поток входа (для записи)"""

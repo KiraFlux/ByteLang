@@ -46,7 +46,7 @@ def _test():
     from bytelang.impl.semantizer.env import EnvironmentSemanticContext
     from bytelang.core.bundle.package import PackageBundle
 
-    root_path = Path(r"A:\Projects\ByteLang\ByteLang-Py\res")
+    root_path = Path(r"E:\Projects\ByteLang\ByteLang-Py\res")
 
     _lexer = Lexer(TokenType.build_regex())
 
@@ -86,16 +86,16 @@ def _test():
         print("\n".join(map(str, reg.getItems())))
 
     try:
-        _my_env = env_loader.get("test_env").unwrap()
 
         with open(root_path / "sketches" / "sketch.bls") as source:
-            sketch = sketch_loader.load(source).unwrap()
+
+            ret = sketch_loader.load(source).unwrap()
+            print(ret)
 
         _pr("Constants", _common_context.getConstants())
         _pr("Macro", _common_context.getMacros())
         _pr("Types", _common_context.getTypes())
         _pr("Packages", package_loader)
-        _pr("Instructions", _my_env.instructions)
 
     except Panic as e:
         print(e)
