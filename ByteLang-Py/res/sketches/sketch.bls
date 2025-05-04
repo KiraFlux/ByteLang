@@ -1,4 +1,5 @@
 .env esp32
 
+.type String = *u8
 
-
+.struct User { name: String, age: u8 }
