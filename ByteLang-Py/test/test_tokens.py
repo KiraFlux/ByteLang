@@ -1,5 +1,7 @@
+from io import StringIO
+
 from bytelang.core.key_word import Keyword
-from bytelang.core.tokens import TokenType
+from bytelang.core.tokenizer import Tokenizer
 
 k = (
     Keyword("struct", "Объявление структуры"),
@@ -9,6 +11,23 @@ k = (
     Keyword("use", "Использование пакета инструкций"),
 )
 
-p = TokenType.build_regex(k)
+source = """
 
-print(p)
+use mypkg # использовать пакет mypkg
+
+# Точка
+struct Point<T> {
+    x: T, # позиция X 
+    y: T  # позиция Y
+}
+
+const p: Point<f32> = { 10.0, -50 + 50}
+
+macro sq(x) -> x * x
+"""
+
+t = Tokenizer(k)
+
+tokens = t.run(StringIO(source))
+
+print(tokens)
