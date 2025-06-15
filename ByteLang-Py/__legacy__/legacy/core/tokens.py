@@ -9,7 +9,7 @@ from typing import Callable
 from typing import Optional
 
 from bytelang.legacy.abc.profiles import RValueProfile
-from bytelang.legacy.core.ops import Operator
+from bytelang.core.ops import Operator
 from bytelang.legacy.impl.profiles.rvalue import FloatRV
 from bytelang.legacy.impl.profiles.rvalue import IntegerRV
 

@@ -9,9 +9,9 @@ from typing import Callable
 from typing import Iterable
 from typing import Optional
 
-from bytelang.legacy.core.stream import CollectionInputStream
-from bytelang.legacy.core.stream import OutputStream
-from bytelang.legacy.core.stream import SingleOutputStream
+from bytelang.core.stream import CollectionInputStream
+from bytelang.core.stream import OutputStream
+from bytelang.core.stream import SingleOutputStream
 from rustpy.exceptions import Panic
 
 

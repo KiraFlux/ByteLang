@@ -11,7 +11,7 @@ from bytelang.legacy.core.result import ErrOne
 from bytelang.legacy.core.result import LogResult
 from bytelang.legacy.core.result import Ok
 from bytelang.legacy.core.result import ResultAccumulator
-from bytelang.legacy.core.stream import OutputStream
+from bytelang.core.stream import OutputStream
 from bytelang.legacy.core.tokens import Token
 from bytelang.legacy.core.tokens import TokenType
 

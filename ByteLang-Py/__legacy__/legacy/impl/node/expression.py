@@ -13,7 +13,7 @@ from typing import Sequence
 from bytelang.legacy.abc.parser import Parser
 from bytelang.legacy.abc.profiles import RValueProfile
 from bytelang.legacy.abc.registry import Registry
-from bytelang.legacy.core.ops import Operator
+from bytelang.core.ops import Operator
 from bytelang.legacy.core.result import ErrOne
 from bytelang.legacy.core.result import LogResult
 from bytelang.legacy.core.result import Ok

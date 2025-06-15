@@ -12,7 +12,7 @@ from bytelang.legacy.core.bundle.sketch import SketchBundle
 from bytelang.legacy.core.lexer import Lexer
 from bytelang.legacy.core.loader import Loader
 from bytelang.legacy.core.result import LogResult
-from bytelang.legacy.core.stream import OutputStream
+from bytelang.core.stream import OutputStream
 from bytelang.legacy.core.tokens import Token
 from bytelang.legacy.core.tokens import TokenType
 from bytelang.legacy.impl.parser.common import CommonParser

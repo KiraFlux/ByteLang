@@ -6,7 +6,7 @@ from typing import Optional
 
 from bytelang.legacy.abc.parser import Parser
 from bytelang.legacy.core.result import LogResult
-from bytelang.legacy.core.stream import OutputStream
+from bytelang.core.stream import OutputStream
 from bytelang.legacy.core.tokens import Token
 from bytelang.legacy.core.tokens import TokenType
 from bytelang.legacy.impl.node.directive.common import ConstDefine

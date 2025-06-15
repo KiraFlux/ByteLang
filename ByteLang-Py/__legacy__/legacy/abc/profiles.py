@@ -7,7 +7,7 @@ from typing import Sequence
 
 from bytelang.legacy.abc.node import Node
 from bytelang.legacy.abc.semantic import SemanticContext
-from bytelang.legacy.core.ops import Operator
+from bytelang.core.ops import Operator
 from bytelang.legacy.core.result import LogResult
 
 

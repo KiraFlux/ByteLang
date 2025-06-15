@@ -8,12 +8,12 @@ from bytelang.legacy.core.result import ErrOne
 from bytelang.legacy.core.result import Ok
 from bytelang.legacy.core.result import Result
 from bytelang.legacy.core.result import ResultAccumulator
-from bytelang.legacy.core.stream import CollectionOutputStream
-from bytelang.legacy.core.stream import OutputStream
+from bytelang.core.stream import CollectionOutputStream
+from bytelang.core.stream import OutputStream
 from bytelang.legacy.core.tokens import Token
 from bytelang.legacy.core.tokens import TokenType
 
-from bytelang.legacy.core.util.log import Logger
+from bytelang.core.util.log import Logger
 
 _log = Logger.fromFile(__file__)
 

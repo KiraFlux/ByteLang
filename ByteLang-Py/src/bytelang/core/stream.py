@@ -8,7 +8,7 @@ from typing import MutableSequence
 from typing import Optional
 from typing import Sequence
 
-from bytelang.legacy.core.util.etc import digitsLength
+from bytelang.core.util.etc import digitsLength
 
 
 class Stream[T]:
@@ -19,7 +19,7 @@ class Stream[T]:
         """Получить последовательность элементов"""
 
     def __repr__(self) -> str:
-        return "\n".join((
+        return f"{self.__class__.__name__}@{id(self):016X}" + "\n".join((
             f"{i:>{digitsLength(len(self.getItems()))}}: {el}"
             for i, el in enumerate(self.getItems())
         ))
@@ -86,21 +86,3 @@ class CollectionOutputStream[T](OutputStream[T]):
 
     def getItems(self) -> Sequence[T]:
         return self._items
-
-
-class SingleOutputStream[T](OutputStream[T]):
-    """Потом выхода из одного элемента"""
-
-    def __init__(self, item: T) -> None:
-        self._item: Optional[T] = item
-
-    def peek(self) -> Optional[T]:
-        return self._item
-
-    def next(self) -> Optional[T]:
-        ret = self._item
-        self._item = None
-        return ret
-
-    def getItems(self) -> Sequence[T]:
-        return () if self._item is None else (self._item,)

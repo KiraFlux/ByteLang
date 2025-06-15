@@ -10,7 +10,7 @@ from bytelang.legacy.core.bundle.sketch import SketchBundle
 from bytelang.legacy.core.result import ErrOne
 from bytelang.legacy.core.result import LogResult
 from bytelang.legacy.core.result import Ok
-from bytelang.legacy.core.stream import InputStream
+from bytelang.core.stream import InputStream
 from bytelang.legacy.impl.registry.immediate import MutableImmediateRegistry
 from bytelang.legacy.impl.semantizer.common import CommonSemanticContext
 from bytelang.legacy.impl.semantizer.composite import CompositeSemanticContext

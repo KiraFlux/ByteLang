@@ -5,7 +5,7 @@ from typing import TextIO
 from bytelang.legacy.abc.semantic import SemanticContext
 from bytelang.legacy.core.lexer import Lexer
 from bytelang.legacy.core.result import LogResult
-from bytelang.legacy.core.stream import OutputStream
+from bytelang.core.stream import OutputStream
 from bytelang.legacy.core.tokens import Token
 from bytelang.legacy.impl.node.program import Program
 from bytelang.legacy.impl.parser.common import CommonParser
