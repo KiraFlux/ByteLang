@@ -13,6 +13,8 @@ k = (
 
 source = """
 
+const a: [4]u8 = 123 as u8
+
 use mypkg # использовать пакет mypkg
 
 # Точка

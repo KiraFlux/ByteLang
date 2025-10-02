@@ -32,6 +32,7 @@ class TokenType(Enum):
     Slash = auto()
     Star = auto()
     Dot = auto()
+    Cast = auto()
 
     # Скобки
 

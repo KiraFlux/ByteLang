@@ -53,6 +53,9 @@ def some[T](value: T) -> Option[T]:
     return Option(_value=value)
 
 
+_none_inst = Option(_value=None)
+
+
 def none() -> Option[Any]:
     """Создать пустой Option"""
-    return Option(_value=None)
+    return _none_inst

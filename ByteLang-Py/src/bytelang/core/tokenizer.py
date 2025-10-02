@@ -111,6 +111,7 @@ class Tokenizer:
             (TokenType.Slash, r'/'),
             (TokenType.Star, r'\*'),
             (TokenType.Dot, r'\.'),
+            (TokenType.Cast, r'as'),
             (TokenType.OpenRound, r'\('),
             (TokenType.CloseRound, r'\)'),
             (TokenType.OpenFigure, r'\{'),
