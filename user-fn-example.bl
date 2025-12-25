@@ -2,7 +2,7 @@
 // Регистровая математика
 
 // *ret = *a + *b
-pub fn add(ret: *i16, a: *i16, b: *16) = ...
+pub fn add(ret: *i16, a: *i16, b: *16) = 0x67 
 
 
 //!mem.bl
