@@ -4,15 +4,24 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="feea6d18-ae71-4768-95cb-01ef49d6ca31" name="Changes" comment="ByteLang bridge с репозитория хакатона KiraFlux/Misis-Zoomers">
-      <change afterPath="$PROJECT_DIR$/ima.bl" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/zombie-ai-garbage-garbage.md" afterDir="false" />
+    <list default="true" id="feea6d18-ae71-4768-95cb-01ef49d6ca31" name="Changes" comment="Начало python прототипа">
+      <change afterPath="$PROJECT_DIR$/ByteLang-By/src/bytelang/_lexer.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ByteLang-By/src/bytelang/_token.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/ByteLang.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/ByteLang.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -22,6 +31,9 @@
   &quot;associatedIndex&quot;: 1
 }</component>
   <component name="ProjectId" id="2tR6YHbwUkafZLxcz3wPOcTa3pA" />
+  <component name="ProjectLevelVcsManager">
+    <ConfirmationsSetting value="2" id="Add" />
+  </component>
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
@@ -30,9 +42,10 @@
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
     "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
     "git-widget-placeholder": "main",
-    "last_opened_file_path": "D:/Projects/ByteLang",
-    "settings.editor.selected.configurable": "preferences.fileTypes"
+    "last_opened_file_path": "/home/kiraflux/Repos/ByteLang",
+    "settings.editor.selected.configurable": "preferences.pluginManager"
   }
 }]]></component>
   <component name="SharedIndexes">
@@ -75,13 +88,22 @@
       <option name="project" value="LOCAL" />
       <updated>1766267136022</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="Начало python прототипа">
+      <option name="closed" value="true" />
+      <created>1766745212762</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1766745212762</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="da" />
     <MESSAGE value="думаем" />
     <MESSAGE value="ByteLang bridge с репозитория хакатона KiraFlux/Misis-Zoomers" />
-    <option name="LAST_COMMIT_MESSAGE" value="ByteLang bridge с репозитория хакатона KiraFlux/Misis-Zoomers" />
+    <MESSAGE value="Начало python прототипа" />
+    <option name="LAST_COMMIT_MESSAGE" value="Начало python прототипа" />
   </component>
 </project>

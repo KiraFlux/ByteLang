@@ -7,7 +7,7 @@
       <excludeFolder url="file://$MODULE_DIR$/ByteLang-Py/.idea" />
       <excludeFolder url="file://$MODULE_DIR$/ByteLang-Py/__legacy__" />
     </content>
-    <orderEntry type="inheritedJdk" />
+    <orderEntry type="jdk" jdkName="Python 3.13" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
 </module>
