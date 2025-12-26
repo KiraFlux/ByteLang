@@ -55,10 +55,13 @@ fn calc(
     // var return: i16
 
     // return = 5
-    mem.load(return, return, 5)
-    
-    // return = x + y
-    math.add(return, x, y)
+    mem.load(return, 5)
+
+    // return = return + x
+    math.add(return, return, x)
+
+    // return = return + y
+    math.add(return, return, y)
     
     // Восстанавливаем SP
     func.ret()
