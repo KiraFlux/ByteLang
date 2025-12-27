@@ -4,13 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="feea6d18-ae71-4768-95cb-01ef49d6ca31" name="Changes" comment="Начало python прототипа">
-      <change afterPath="$PROJECT_DIR$/ByteLang-By/src/bytelang/_lexer.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/ByteLang-By/src/bytelang/_token.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/ByteLang.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/ByteLang.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-    </list>
+    <list default="true" id="feea6d18-ae71-4768-95cb-01ef49d6ca31" name="Changes" comment="lexer" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -96,7 +90,15 @@
       <option name="project" value="LOCAL" />
       <updated>1766745212762</updated>
     </task>
-    <option name="localTasksCounter" value="5" />
+    <task id="LOCAL-00005" summary="lexer">
+      <option name="closed" value="true" />
+      <created>1766746770725</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1766746770725</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
@@ -104,6 +106,7 @@
     <MESSAGE value="думаем" />
     <MESSAGE value="ByteLang bridge с репозитория хакатона KiraFlux/Misis-Zoomers" />
     <MESSAGE value="Начало python прототипа" />
-    <option name="LAST_COMMIT_MESSAGE" value="Начало python прототипа" />
+    <MESSAGE value="lexer" />
+    <option name="LAST_COMMIT_MESSAGE" value="lexer" />
   </component>
 </project>
